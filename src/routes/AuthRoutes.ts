@@ -1,0 +1,15 @@
+import express, {Request, Response} from 'express';
+import { createUser, loginUser, forgotPasswordUser, resetPasswordUser, resetPasswordGetEmail } from '../controllers/authController';
+
+const router = express.Router();
+//forgotPasswordUser, resetPasswordUser
+
+
+router.post('/create-user', createUser);
+router.post('/signin-user', loginUser);
+router.post('/forgot-password', forgotPasswordUser);
+router.post('/reset-password/:token', resetPasswordUser);
+router.get('/reset-password/:token', resetPasswordGetEmail);
+//router.post('/api/barangay', loginUser);
+
+export default router;
