@@ -1,4 +1,5 @@
 import AuthRoutes from './routes/AuthRoutes';
+import UserRoutes from './routes/UserRoutes';
 import passport from './config/auth';
 import { Request, Response } from 'express';
 import session from 'express-session';
@@ -39,6 +40,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 app.use(express.json());
 app.use('/account', AuthRoutes);
+app.use('/admin', UserRoutes)
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/google/callback', passport.authenticate("google", { session: false }), (req : Request, res : Response) => {
@@ -52,6 +54,8 @@ app.get('/google/callback', passport.authenticate("google", { session: false }),
     res.status(500).json({message: 'Internal Server Error'});
   }
  })
+
+
 app.get(
   '/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/login' }),
