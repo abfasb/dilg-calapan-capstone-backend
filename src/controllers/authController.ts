@@ -61,18 +61,35 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction):
             { expiresIn: '5d' }
         );
 
-        res.status(200).json({
+
+        if (findUser.role === "Admin") {
+            res.status(200).json({
+              message: "Login Successfully",
+              token,
+              redirectUrl: `/account/admin/${findUser._id}`,
+              user: {
+                id: findUser._id,
+                email: findUser.email,
+                role: findUser.role,
+              },
+            });
+            return;
+          }
+
+           res.status(200).json({
             message: 'Login Successfully',
             token,
             user: {
-                id: findUser._id,
-                username: findUser.username,
-                email: findUser.email,
-                role: findUser.role,
-                firstName: findUser.firstName,
-                lastName: findUser.lastName,
+              id: findUser._id,
+              username: findUser.username,
+              email: findUser.email,
+              role: findUser.role,
+              firstName: findUser.firstName,
+              lastName: findUser.lastName,
             },
-        });
+            redirectUrl: `/dashboard/${findUser._id}`
+          });
+
 
     } catch (error) {
         console.error("Login error:", error);
