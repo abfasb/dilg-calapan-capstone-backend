@@ -1,5 +1,6 @@
 import AuthRoutes from './routes/AuthRoutes';
 import UserRoutes from './routes/UserRoutes';
+import PendingLguRoutes from './routes/PendingLguRoutes';
 import passport from './config/auth';
 import { Request, Response } from 'express';
 import session from 'express-session';
@@ -41,6 +42,7 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use(express.json());
 app.use('/account', AuthRoutes);
 app.use('/admin', UserRoutes)
+app.use('/lgu', PendingLguRoutes)
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/google/callback', passport.authenticate("google", { session: false }), (req : Request, res : Response) => {
