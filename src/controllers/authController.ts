@@ -74,6 +74,19 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction):
               },
             });
             return;
+          } else if (findUser.role === "lgu") {
+            res.status(200).json({
+              message: "Login Successfully",
+              token,
+              redirectUrl: `/account/lgu/${findUser._id}`,
+              user: {
+                id: findUser._id,
+                email: findUser.email,
+                role: findUser.role,
+                name: findUser.firstName + ' ' + findUser.lastName
+              },
+            });
+            return;
           }
 
            res.status(200).json({
