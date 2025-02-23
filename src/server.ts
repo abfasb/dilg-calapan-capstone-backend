@@ -1,5 +1,6 @@
 import AuthRoutes from './routes/AuthRoutes';
 import UserRoutes from './routes/UserRoutes';
+import ReportRoutes from './routes/ReportRoutes';
 import PendingLguRoutes from './routes/PendingLguRoutes';
 import passport from './config/auth';
 import { Request, Response } from 'express';
@@ -43,6 +44,7 @@ app.use(express.json());
 app.use('/account', AuthRoutes);
 app.use('/admin', UserRoutes)
 app.use('/lgu', PendingLguRoutes)
+app.use('/form', ReportRoutes)
 
 app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 app.get('/google/callback', passport.authenticate("google", { session: false }), (req : Request, res : Response) => {

@@ -8,8 +8,9 @@ export interface IUser extends Document {
     role: string,
     firstName: string,
     lastName: string,
+    barangay: string,
+    position: string,
     phoneNumber: string,
-    profilePicture?: string,
     resetToken?: string,
     resetTokenExpiry?: Date,
     createdAt: Date,
@@ -35,6 +36,14 @@ const UserSchema : Schema = new Schema ({
         required: true
     },
     firstName: {
+        type: String, 
+        required: true
+    },
+    barangay: {
+        type: String, 
+        required: true
+    },
+    position: {
         type: String, 
         required: true
     },
