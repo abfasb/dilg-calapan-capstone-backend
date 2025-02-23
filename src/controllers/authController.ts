@@ -10,22 +10,35 @@ import GoogleUser from '../models/GoogleUser';
 const jwtSecret = process.env.JWT_SECRET_KEY || 'asdsajbdjba';
 
 export const createUser = async(req: Request, res: Response, next:NextFunction): Promise<void> => {
+    try {
+        const { email, password, role = "citizen", lastName, firstName, barangay, position, phoneNumber } = req.body;
 
-    try{
-        const {email, password, role = "citzen", lastName, firstName, phoneNumber} = req.body;
+        const existingEmail = await User.findOne({ email });
+        if (existingEmail) {
+             res.status(409).json({ message: 'Email already exists' });
+             return
+        }
 
-        const findUser = await User.findOne({email});
-
-        if(findUser) {
-            res.status(400).json({message: 'User already exist'});
+        const existingPosition = await User.findOne({ barangay, position });
+        if (existingPosition) {
+             res.status(409).json({ message: 'This position in the selected barangay is already taken' });
+             return
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user : IUser = new User({ email, password: hashedPassword, role, lastName, firstName, phoneNumber})
+        const user: IUser = new User({ 
+            email, 
+            password: hashedPassword, 
+            role, 
+            lastName, 
+            firstName, 
+            barangay, 
+            position, 
+            phoneNumber 
+        });
         
         await user.save();
-
-        res.status(201).json({message: 'Account created successfully!'});
+        res.status(201).json({ message: 'Account created successfully!' });
 
     } catch(error) {
         next(error);
@@ -72,7 +85,7 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction):
                 email: findUser.email,
                 role: findUser.role,
               },
-            });
+            }); 
             return;
           } else if (findUser.role === "lgu") {
             res.status(200).json({
