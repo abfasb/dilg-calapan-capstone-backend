@@ -10,3 +10,4 @@ router.get('/pendingLgus', getAllPendingLgu);
 router.put('/pendingLgus/:id', approveOrRejectLgu);
 
 export default router;
+
