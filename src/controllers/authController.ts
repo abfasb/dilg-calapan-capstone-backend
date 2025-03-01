@@ -107,13 +107,11 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction):
             token,
             user: {
               id: findUser._id,
-              username: findUser.username,
+              name: findUser.firstName + ' ' + findUser.lastName,
               email: findUser.email,
               role: findUser.role,
-              firstName: findUser.firstName,
-              lastName: findUser.lastName,
             },
-            redirectUrl: `/dashboard/${findUser._id}`
+            redirectUrl: `/account/citizen/${findUser._id}`
           });
 
 
