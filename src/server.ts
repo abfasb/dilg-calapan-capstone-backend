@@ -46,27 +46,41 @@ app.use('/admin', UserRoutes)
 app.use('/lgu', PendingLguRoutes)
 app.use('/form', ReportRoutes)
 
-app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-app.get('/google/callback', passport.authenticate("google", { session: false }), (req : Request, res : Response) => {
-  try{
-      const user : any= req.user;
+  app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
+  app.get(
+    '/google/callback',
+    passport.authenticate("google", { session: false }),
+    (req: Request, res: Response) => {
+      try {
+        const user: any = req.user;
 
-      const token = jwt.sign({ id: user._id}, "asdasdasda", { expiresIn: '7d'});
+        const token = jwt.sign({ id: user._id }, "asdasdasda", { expiresIn: '7d' });
 
-      res.json({ message: 'Login Successful', token, user});
-  }catch(error){
-    res.status(500).json({message: 'Internal Server Error'});
-  }
- })
+        res.redirect(`${process.env.CLIENT_URL}/account/citizen/${user._id}?token=${token}&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`);
+        
+      } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    }
+  );
 
 
-app.get(
-  '/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
-  (req : Request, res : Response ) => {
-    res.send("Login Successful");
-  }
-)
+  app.get(
+    '/auth/google/callback',
+    passport.authenticate('google', { session: false, failureRedirect: '/account/login' }),
+    (req: Request, res: Response) => {
+      try {
+        const user: any = req.user;
+
+        const token = jwt.sign({ id: user._id }, "asdasdasda", { expiresIn: '7d' });
+
+        res.redirect(`${process.env.CLIENT_URL}/account/citizen/${user._id}?token=${token}&name=${encodeURIComponent(user.name)}&email=${encodeURIComponent(user.email)}`);
+        
+      } catch (error) {
+        res.status(500).json({ message: 'Internal Server Error' });
+      }
+    }
+  );
 
 
 
