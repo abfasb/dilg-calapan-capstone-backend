@@ -3,7 +3,6 @@ import UserRoutes from './routes/UserRoutes';
 import ReportRoutes from './routes/ReportRoutes';
 import PendingLguRoutes from './routes/PendingLguRoutes';
 import FAQRoutes from './routes/FAQRoutes';
-import SystemMetricsRoutes from './routes/SystemMetricsRoute'
 import AnalyticsRoutes from './routes/AnalyticsRoutes';
 import passport from './config/auth';
 import { Request, Response } from 'express';
@@ -51,7 +50,6 @@ app.use('/form', ReportRoutes);
 app.use('/api/faqs', FAQRoutes);
 app.use('/analytics', AnalyticsRoutes);
 
-app.use('/api/system', SystemMetricsRoutes);
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
   app.get(

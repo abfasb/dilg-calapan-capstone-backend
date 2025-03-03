@@ -9,17 +9,29 @@ interface IFormField {
     description?: string;
     image?: string;
   }
+
+  interface IResponse {
+    data: any;
+    submittedAt: Date;
+  }
   
   interface IForm extends mongoose.Document {
     title: string;
     description: string;
     fields: IFormField[];
+    responses: IResponse[]; 
   }
   
   const formSchema = new mongoose.Schema<IForm>({
     title: { type: String, required: true },
     description: String,
     fields: [{ type: Object, required: true }],
+    responses: [
+      {
+        data: Schema.Types.Mixed,
+        submittedAt: { type: Date, default: Date.now },
+      },
+    ],
   });
   
   const ReportForms = mongoose.model<IForm>("ReportForms", formSchema);
