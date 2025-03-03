@@ -2,6 +2,9 @@ import AuthRoutes from './routes/AuthRoutes';
 import UserRoutes from './routes/UserRoutes';
 import ReportRoutes from './routes/ReportRoutes';
 import PendingLguRoutes from './routes/PendingLguRoutes';
+import FAQRoutes from './routes/FAQRoutes';
+import SystemMetricsRoutes from './routes/SystemMetricsRoute'
+import AnalyticsRoutes from './routes/AnalyticsRoutes';
 import passport from './config/auth';
 import { Request, Response } from 'express';
 import session from 'express-session';
@@ -42,9 +45,13 @@ mongoose.connect(process.env.MONGODB_URI)
 
 app.use(express.json());
 app.use('/account', AuthRoutes);
-app.use('/admin', UserRoutes)
-app.use('/lgu', PendingLguRoutes)
-app.use('/form', ReportRoutes)
+app.use('/admin', UserRoutes);
+app.use('/lgu', PendingLguRoutes);
+app.use('/form', ReportRoutes);
+app.use('/api/faqs', FAQRoutes);
+app.use('/analytics', AnalyticsRoutes);
+
+app.use('/api/system', SystemMetricsRoutes);
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
   app.get(
