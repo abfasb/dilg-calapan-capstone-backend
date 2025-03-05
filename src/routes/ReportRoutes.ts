@@ -10,7 +10,7 @@ router.get('/get-report', getReportForms);
 router.put('/update-report/:id', updateReportForms);
 
 
- /*
+ 
 router.get('/:id', async (req : Request, res : Response, next: NextFunction) : Promise<void>=> {
   try {
     const report = await ReportForms.findById(req.params.id);
@@ -18,6 +18,7 @@ router.get('/:id', async (req : Request, res : Response, next: NextFunction) : P
         res.status(404).json({ message: 'Report not found' });
         return;
     }
+    
     res.json(report);
   } catch (error : any) {
     res.status(500).json({ message: error.message });
@@ -46,6 +47,7 @@ router.post('/:id/responses', async (req : Request, res : Response, next: NextFu
   }
 });
 
+/*
 module.exports = router;
 
 export default router;

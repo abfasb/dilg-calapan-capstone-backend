@@ -18,6 +18,7 @@ interface IFormField {
   interface IForm extends mongoose.Document {
     title: string;
     description: string;
+    createdAt: Date;
     fields: IFormField[];
     responses: IResponse[]; 
   }
@@ -25,6 +26,7 @@ interface IFormField {
   const formSchema = new mongoose.Schema<IForm>({
     title: { type: String, required: true },
     description: String,
+    createdAt: { type: Date, default: Date.now },
     fields: [{ type: Object, required: true }],
     responses: [
       {
