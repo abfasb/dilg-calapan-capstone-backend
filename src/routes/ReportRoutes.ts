@@ -1,11 +1,13 @@
-import Express, { NextFunction, Request, Response } from 'express';
-import { createReport, getReportForms, updateReportForms } from '../controllers/reportController';
-import ReportForms from '../models/ReportForm';
-import ResponseCitizen from '../models/ResponseCitizen';
-import multer from 'multer';
+  import Express, { NextFunction, Request, Response } from 'express';
+  import { createReport, getReportForms, updateReportForms } from '../controllers/reportController';
+  import ReportForms from '../models/ReportForm';
+  import ResponseCitizen from '../models/ResponseCitizen';
+  import multer from 'multer';
+  import bucket from '../config/firebaseConfig';
 
+  const router = Express.Router();
 
-const router = Express.Router();
+  const upload: multer.Multer = multer({ storage: multer.memoryStorage() });
 
 router.post('/create-report', createReport);
 router.get('/get-report', getReportForms);
@@ -27,7 +29,6 @@ router.get('/:id', async (req : Request, res : Response, next: NextFunction) : P
   }
 });
 
-const upload = multer({ storage: multer.memoryStorage() });
 
 const generateReferenceNumber = () => {
   const date = new Date();
@@ -42,18 +43,28 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response, 
   try {
     const referenceNumber = generateReferenceNumber();
     const formData: Record<string, any> = { ...req.body };
+    const uploadedFiles: { filename: string; url: string; mimetype: string }[] = [];
 
-    if (req.files) {
-      (req.files as Express.Multer.File[]).forEach((file) => {
-        if (!formData[file.fieldname]) {
-          formData[file.fieldname] = [];
-        }
-        formData[file.fieldname].push({
-          filename: file.originalname,
-          content: file.buffer.toString('base64'),
-          mimetype: file.mimetype
+    if (Array.isArray(req.files)) {
+      for (const file of req.files) {
+        const multerFile = file; 
+        const fileRef = bucket.file(`uploads/${referenceNumber}/${multerFile.originalname}`);
+        
+        await fileRef.save(multerFile.buffer, {
+          metadata: { contentType: multerFile.mimetype },
         });
-      });
+
+        const [url] = await fileRef.getSignedUrl({
+          action: 'read',
+          expires: '03-01-2030',
+        });
+
+        uploadedFiles.push({ filename: multerFile.originalname, url, mimetype: multerFile.mimetype });
+      }
+    }
+
+    if (uploadedFiles.length > 0) {
+      formData.files = uploadedFiles;
     }
 
     const newSubmission = new ResponseCitizen({
@@ -61,21 +72,21 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response, 
       formId: req.params.id,
       userId: req.body.userId,
       data: formData,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
 
     await newSubmission.save();
 
     res.status(201).json({
       referenceNumber,
-      submissionData: formData
+      submissionData: formData,
     });
 
   } catch (error) {
     console.error('Submission error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Submission failed',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
