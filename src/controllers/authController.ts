@@ -234,3 +234,23 @@ export const resetPasswordUser = async (req: Request, res: Response, next: NextF
 
 
 
+export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+          const { id } = req.params;
+          let user = await User.findById(id);
+          if (user) {
+            res.status(200).json({ user })
+            return;
+        }
+          user = await GoogleUser.findById(id);
+          if (user)  {
+             res.status(200).json({  user }) ;
+             return;
+        };
+          res.status(404).json({ error: 'User not found' });
+          return;
+
+        } catch (error : any) {
+          res.status(500).json({ error});
+}
+}

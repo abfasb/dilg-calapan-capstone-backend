@@ -42,7 +42,7 @@ const port = process.env.PORT || 3000;
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Mongodb is Working hehehe'))
   .catch((err : any) => console.log('Something went wrong', err));
-
+  
 app.use(express.json());
 app.use('/account', AuthRoutes);
 app.use('/admin', UserRoutes);
