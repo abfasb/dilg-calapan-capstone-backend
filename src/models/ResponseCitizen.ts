@@ -9,6 +9,11 @@ const submissionSchema = new mongoose.Schema({
       fieldId: String,
       fileNames: [String]
     }],
+    status: { 
+      type: String, 
+      enum: ["pending", "approved", "rejected"], 
+      default: "pending" 
+    },
     createdAt: { type: Date, default: Date.now }
   });
 

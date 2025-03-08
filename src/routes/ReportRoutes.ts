@@ -1,5 +1,5 @@
   import Express, { NextFunction, Request, Response } from 'express';
-  import { createReport, getReportForms, updateReportForms } from '../controllers/reportController';
+  import { createReport, getReportForms, getUserReports, updateReportForms } from '../controllers/reportController';
   import ReportForms from '../models/ReportForm';
   import ResponseCitizen from '../models/ResponseCitizen';
   import multer from 'multer';
@@ -91,6 +91,7 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response, 
   }
 });
 
+router.get('/my-reports/:id', getUserReports);
 /*
 module.exports = router;
 
