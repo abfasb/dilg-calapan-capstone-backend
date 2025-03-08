@@ -1,5 +1,6 @@
 import Express, { Request, Response, NextFunction} from 'express';
 import ReportForms from '../models/ReportForm'
+import ResponseCitizen from '../models/ResponseCitizen';
 
 export const createReport = async (req : Request, res : Response, next : NextFunction) : Promise<void> => {
     try {
@@ -20,6 +21,7 @@ export const getReportForms = async (req : Request, res : Response, next : NextF
       res.status(500).json({ error: "Error fetching forms" });
     }
   }
+
 
 
   
@@ -53,3 +55,17 @@ export const updateReportForms = async (req : Request, res : Response, next : Ne
     })
   }
 }
+export const getUserReports = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    
+    const reports = await ResponseCitizen.find({ userId : id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json(reports);
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
