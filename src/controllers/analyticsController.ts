@@ -3,6 +3,7 @@ import PendingUser from '../models/LGUPendingUser';
 import GoogleUser from '../models/GoogleUser';
 import ReportForm from '../models/ReportForm';
 import { Request, Response } from 'express';
+import ResponseCitizen from '../models/ResponseCitizen';
 
 export const getUserStats = async (req : Request, res : Response) => {
   try {
@@ -56,6 +57,101 @@ export const getRecentActivity = async (req : Request, res : Response) => {
       .limit(5);
 
     res.json({ recentUsers, recentForms });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+export const getResponseStats = async (req: Request, res: Response) => {
+  try {
+    const totalResponses = await ResponseCitizen.countDocuments();
+    const responsesByStatus = await ResponseCitizen.aggregate([
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+    
+    const averageResponseTime = await ResponseCitizen.aggregate([
+      { 
+        $project: { 
+          processingTime: { 
+            $divide: [
+              { $subtract: [new Date(), "$createdAt"] }, 
+              1000 * 60 * 60 * 24 // Convert to days
+            ] 
+          } 
+        } 
+      },
+      { $group: { _id: null, avg: { $avg: "$processingTime" } } }
+    ]);
+
+    const documentsStats = await ResponseCitizen.aggregate([
+      { $project: { filesCount: { $size: "$files" } } },
+      { $group: { 
+        _id: null,
+        totalFiles: { $sum: "$filesCount" },
+        avgFilesPerResponse: { $avg: "$filesCount" }
+      } }
+    ]);
+
+    res.json({
+      totalResponses,
+      responsesByStatus,
+      averageProcessingTime: averageResponseTime[0]?.avg || 0,
+      totalDocuments: documentsStats[0]?.totalFiles || 0,
+      avgDocumentsPerResponse: documentsStats[0]?.avgFilesPerResponse || 0
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getFormResponses = async (req: Request, res: Response) => {
+  try {
+    const responsesPerForm = await ResponseCitizen.aggregate([
+      { $group: { _id: "$formId", count: { $sum: 1 } } },
+      { $lookup: {
+        from: "reportforms",
+        localField: "_id",
+        foreignField: "_id",
+        as: "form"
+      }},
+      { $unwind: "$form" },
+      { $project: { formTitle: "$form.title", count: 1 } }
+    ]);
+
+    const sectorDistribution = await ResponseCitizen.aggregate([
+      { $unwind: "$data" },
+      { $match: { "data.key": "4141b9cf-fbe0-4001-a249-b2f7adf93e6f" } },
+      { $group: { _id: "$data.value", count: { $sum: 1 } } }
+    ]);
+
+    res.json({ responsesPerForm, sectorDistribution });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getSubmissionTrends = async (req: Request, res: Response) => {
+  try {
+    const trends = await ResponseCitizen.aggregate([
+      { 
+        $project: { 
+          week: { $week: "$createdAt" },
+          month: { $month: "$createdAt" },
+          year: { $year: "$createdAt" }
+        } 
+      },
+      { 
+        $group: {
+          _id: { year: "$year", month: "$month", week: "$week" },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1, "_id.week": 1 } },
+      { $limit: 12 }
+    ]);
+
+    res.json(trends);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

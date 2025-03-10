@@ -1,4 +1,4 @@
-import Express, { Request, Response } from 'express';
+import Express, { Request, Response, NextFunction } from 'express';
 import BlogPost from '../models/landingpage/BlogPost';
 import bucket from '../config/firebaseConfig';
 
@@ -110,31 +110,6 @@ export const updateBlog = async (req: Request, res: Response) : Promise<void> =>
   }
 };
 
-export const getAllBlogs = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const blogs = await BlogPost.find().sort({ date: -1 }); // Sort by latest
-    res.status(200).json(blogs);
-  } catch (error) {
-    console.error('Error fetching blogs:', error);
-    res.status(500).json({ error: 'Error fetching blog posts' });
-  }
-};
-
-export const getBlogById = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const blog = await BlogPost.findById(req.params.id);
-
-    if (!blog) {
-      res.status(404).json({ error: 'Blog post not found' });
-      return;
-    }
-
-    res.status(200).json(blog);
-  } catch (error) {
-    console.error('Error fetching blog:', error);
-    res.status(500).json({ error: 'Error fetching blog post' });
-  }
-};
 
 export const deleteBlog = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -147,5 +122,30 @@ export const deleteBlog = async (req: Request, res: Response): Promise<void> => 
   } catch (error) {
     console.error('Error deleting blog:', error);
     res.status(500).json({ error: 'Error deleting blog post' });
+  }
+};
+
+
+export const getAllBlogs = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
+  try {
+    const blogs = await BlogPost.find({ status: 'published' })
+      .sort({ date: -1 })
+      .select('-__v');
+    res.json(blogs);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+export const getBlogById = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
+  try {
+    const blog = await BlogPost.findById(req.params.id).select('-__v');
+    if (!blog) {
+      res.status(404).json({ message: 'Blog not found' });
+      return;
+    }
+    res.json(blog);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error' });
   }
 };
