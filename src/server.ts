@@ -5,7 +5,10 @@ import PendingLguRoutes from './routes/PendingLguRoutes';
 import FAQRoutes from './routes/FAQRoutes';
 import BlogsRoutes from './routes/BlogsRoutes';
 import AnalyticsRoutes from './routes/AnalyticsRoutes';
+import ComplaintRoutes from './routes/ComplainRoutes';
 import passport from './config/auth';
+
+
 import { Request, Response } from 'express';
 import session from 'express-session';
 const express = require('express');
@@ -51,7 +54,7 @@ app.use('/form', ReportRoutes);
 app.use('/analytics', AnalyticsRoutes);
 app.use('/api/faqs', FAQRoutes);
 app.use('/api/blogs', BlogsRoutes);
-
+app.use('/complaints', ComplaintRoutes)
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
