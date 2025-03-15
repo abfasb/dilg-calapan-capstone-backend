@@ -7,6 +7,7 @@ import BlogsRoutes from './routes/BlogsRoutes';
 import AnalyticsRoutes from './routes/AnalyticsRoutes';
 import ComplaintRoutes from './routes/ComplainRoutes';
 import passport from './config/auth';
+import AppointmentRoutes from './routes/AppointmentRoutes';
 
 
 import { Request, Response } from 'express';
@@ -21,7 +22,7 @@ const app = express();
 
 const corsOptions = {
   origin: 'http://localhost:5173', 
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
@@ -55,6 +56,7 @@ app.use('/analytics', AnalyticsRoutes);
 app.use('/api/faqs', FAQRoutes);
 app.use('/api/blogs', BlogsRoutes);
 app.use('/complaints', ComplaintRoutes)
+app.use('/appointments', AppointmentRoutes)
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
