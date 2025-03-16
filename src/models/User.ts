@@ -15,7 +15,8 @@ export interface IUser extends Document {
     resetTokenExpiry?: Date,
     createdAt: Date,
     updatedAt: Date,
-    lastLogin: Date
+    lastLogin: Date,
+    fcmToken?: string; 
 }
 
 const UserSchema : Schema = new Schema ({

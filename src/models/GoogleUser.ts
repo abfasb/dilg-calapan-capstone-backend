@@ -4,6 +4,7 @@ export interface IGoogleUser extends Document {
     googleId: string;
     email: string,
     name: string,
+    fcmToken?: string; 
 }
 
 const GoogleUserSchema : Schema = new Schema({

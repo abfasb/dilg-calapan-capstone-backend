@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 interface IFormField {
-    id: string;
     type: "text" | "number" | "radio" | "checkbox" | "image" | "dropdown";
     label: string;
     required: boolean;

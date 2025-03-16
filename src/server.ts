@@ -8,6 +8,11 @@ import AnalyticsRoutes from './routes/AnalyticsRoutes';
 import ComplaintRoutes from './routes/ComplainRoutes';
 import passport from './config/auth';
 import AppointmentRoutes from './routes/AppointmentRoutes';
+import EventRoutes from './routes/EventRoutes';
+import FormRoutes from './routes/lgu/FormRoutes'
+import NotificationRoutes from './routes/NotificationRoutes';
+
+import ResponseRoutes from './routes/lgu/ResponseRoutes'
 
 
 import { Request, Response } from 'express';
@@ -57,6 +62,10 @@ app.use('/api/faqs', FAQRoutes);
 app.use('/api/blogs', BlogsRoutes);
 app.use('/complaints', ComplaintRoutes)
 app.use('/appointments', AppointmentRoutes)
+app.use('/events', EventRoutes);
+app.use('/api/form', FormRoutes);
+app.use('/api/response', ResponseRoutes);
+app.use('/api/notify', NotificationRoutes);
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
