@@ -11,26 +11,43 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
       return;
     }
 
-    const appointmentDate = new Date(date);
-    const [hours, minutes] = time.split(':').map(Number);
+    const timeRegex = /^(0[8-9]|1[0-6]):00$/; // 08:00 to 16:00
+    if (!timeRegex.test(time)) {
+      res.status(400).json({ error: 'Invalid time. Please select a whole hour between 8:00 AM and 4:00 PM.' });
+      return;
+    }
 
-    appointmentDate.setHours(hours, minutes, 0, 0);
+    const appointmentDate = new Date(date);
+    const [hours] = time.split(':').map(Number);
+    appointmentDate.setHours(hours, 0, 0, 0);
+
+    const existingExact = await Appointment.findOne({
+      date: appointmentDate.toISOString().split('T')[0],
+      time: time
+    });
+
+    if (existingExact) {
+      res.status(400).json({ error: 'This time slot is already booked. Please choose another time.' });
+      return;
+    }
 
     const oneHourBefore = new Date(appointmentDate);
-    oneHourBefore.setHours(oneHourBefore.getHours() - 1);
-
+    oneHourBefore.setHours(hours - 1);
+    
     const oneHourAfter = new Date(appointmentDate);
-    oneHourAfter.setHours(oneHourAfter.getHours() + 1);
+    oneHourAfter.setHours(hours + 1);
 
-    const existing = await Appointment.findOne({
+    const pad = (num: number) => num.toString().padStart(2, '0');
+
+    const existingWindow = await Appointment.findOne({
       date: appointmentDate.toISOString().split('T')[0],
       time: {
-        $gte: `${oneHourBefore.getHours()}:${oneHourBefore.getMinutes()}`,
-        $lte: `${oneHourAfter.getHours()}:${oneHourAfter.getMinutes()}`
+        $gte: `${pad(oneHourBefore.getHours())}:00`,
+        $lte: `${pad(oneHourAfter.getHours())}:00`
       }
     });
 
-    if (existing) {
+    if (existingWindow) {
       res.status(400).json({ error: 'Another appointment is within 1 hour of this slot. Please choose another time.' });
       return;
     }
@@ -100,7 +117,7 @@ export const updateAppointmentStatus = async (req: Request, res: Response, next:
   }
 };
 
-export const getAllAppointmentsByLGU = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
+export const getAllAppointmentsByLGU = async (req: Request, res: Response) => {
   try {
     const { status } = req.query;
     const filter: any = {};
@@ -108,7 +125,10 @@ export const getAllAppointmentsByLGU = async (req: Request, res: Response, next:
     if (status) filter.status = status;
     
     const appointments = await Appointment.find(filter)
-      .populate('user', 'name email')
+      .populate({
+        path: 'user',
+        select: 'firstName lastName email'
+      })
       .sort({ createdAt: -1 });
 
     res.json(appointments);
