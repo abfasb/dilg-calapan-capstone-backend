@@ -2,8 +2,10 @@ import User from '../models/User';
 import PendingUser from '../models/LGUPendingUser';
 import GoogleUser from '../models/GoogleUser';
 import ReportForm from '../models/ReportForm';
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import ResponseCitizen from '../models/ResponseCitizen';
+import Complaint from '../models/Complaint';
+import Event from '../models/Event';
 
 export const getUserStats = async (req : Request, res : Response) => {
   try {
@@ -44,6 +46,7 @@ export const getFormStats = async (req : Request, res : Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 export const getRecentActivity = async (req : Request, res : Response) => {
   try {
@@ -154,5 +157,123 @@ export const getSubmissionTrends = async (req: Request, res: Response) => {
     res.json(trends);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+
+
+
+export const getLGUStats = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const barangay = req.user.barangay;
+    
+    const [
+      totalCitizens,
+      pendingComplaints,
+      resolvedComplaints,
+      totalResponses,
+      avgResponseTime,
+      upcomingEvents
+    ] = await Promise.all([
+      User.countDocuments({ role: 'citizen', barangay }),
+      Complaint.countDocuments({ status: 'pending', barangay }),
+      Complaint.countDocuments({ status: 'resolved', barangay }),
+      ResponseCitizen.countDocuments({ barangay }),
+      ResponseCitizen.aggregate([
+        { $match: { barangay, status: 'resolved' } },
+        { $group: { _id: null, avg: { $avg: "$resolutionTime" } } }
+      ]),
+      Event.countDocuments({ status: 'published', barangay })
+    ]);
+
+    const totalCases = pendingComplaints + resolvedComplaints;
+    const resolutionRate = totalCases > 0 
+      ? (resolvedComplaints / totalCases) * 100 
+      : 0;
+
+    res.json({
+      success: true,
+      data: {
+        totalCitizens,
+        totalReports: totalResponses + totalCases,
+        resolutionRate: Number(resolutionRate.toFixed(1)),
+        avgResponseTime: avgResponseTime[0]?.avg 
+          ? Number((avgResponseTime[0].avg / 86400000).toFixed(1)) 
+          : 0,
+        upcomingEvents
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getTrendData = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const barangay = req.user.barangay;
+    
+    const [complaints, responses] = await Promise.all([
+      Complaint.aggregate([
+        { $match: { barangay } },
+        { 
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+            total: { $sum: 1 },
+            resolved: { $sum: { $cond: [{ $eq: ["$status", "resolved"] }, 1, 0] } }
+          }
+        },
+        { $sort: { "_id": 1 } }
+      ]),
+      ResponseCitizen.aggregate([
+        { $match: { barangay } },
+        { 
+          $group: {
+            _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+            total: { $sum: 1 },
+            resolved: { $sum: { $cond: [{ $eq: ["$status", "resolved"] }, 1, 0] } }
+          }
+        },
+        { $sort: { "_id": 1 } }
+      ])
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        complaints: complaints.map(c => ({ month: c._id, ...c })),
+        responses: responses.map(r => ({ month: r._id, ...r }))
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getRecentActivities = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const barangay = req.user.barangay;
+    
+    const [complaints, responses] = await Promise.all([
+      Complaint.find({ barangay })
+        .sort('-createdAt')
+        .limit(5)
+        .lean(),
+      ResponseCitizen.find({ barangay })
+        .sort('-createdAt')
+        .limit(5)
+        .lean()
+    ]);
+
+    const activities = [...complaints, ...responses]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 8)
+      .map(item => ({
+        ...item,
+        type: 'title' in item ? 'complaint' : 'response'
+      }));
+
+    res.json({ success: true, data: activities });
+  } catch (error) {
+    next(error);
   }
 };

@@ -107,6 +107,11 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction):
             token,
             user: {
               id: findUser._id,
+              firstName: findUser.firstName,
+              lastName: findUser.lastName,
+              position: findUser.position,
+              barangay: findUser.barangay,
+              phoneNumber: findUser.phoneNumber,
               name: findUser.firstName + ' ' + findUser.lastName,
               email: findUser.email,
               role: findUser.role,
