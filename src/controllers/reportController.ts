@@ -69,3 +69,39 @@ export const getUserReports = async (req: Request, res: Response) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export const getUserReportsAndTracking = async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
+  try {
+    const { id } = req.params;
+    const page = parseInt(req.query.page as string || '1', 10);
+    const limit = 10;
+    const skip = (page - 1) * limit;
+
+    const [responses, total] = await Promise.all([
+      ResponseCitizen.find({ id })
+        .populate({ path: 'formId', select: 'title' })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      ResponseCitizen.countDocuments({ id })
+    ]);
+
+    const reports = responses.map(response => ({
+      _id: response._id,
+      caseId: response.referenceNumber,
+      title: typeof response.formId === 'object' && 'title' in response.formId ? response.formId.title : 'Deleted Form',
+      status: response.status,
+      createdAt: response.createdAt,
+      updatedAt: 'updatedAt' in response ? response.updatedAt : null,
+      category: typeof response.formId === 'object' && 'title' in response.formId ? response.formId.title : 'General' // Using form title as category
+    }));
+
+    res.json({
+      reports,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};

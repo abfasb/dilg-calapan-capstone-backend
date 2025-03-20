@@ -1,5 +1,5 @@
   import Express, { NextFunction, Request, Response } from 'express';
-  import { createReport, getReportForms, getUserReports, updateReportForms } from '../controllers/reportController';
+  import { createReport, getReportForms, getUserReports, updateReportForms, getUserReportsAndTracking} from '../controllers/reportController';
   import ReportForms from '../models/ReportForm';
   import ResponseCitizen from '../models/ResponseCitizen';
   import multer from 'multer';
@@ -97,6 +97,9 @@ module.exports = router;
 
 export default router;
 */
+
+router.get('/my-reports-track/:id', getUserReportsAndTracking);
+
 
 export default router;
 
