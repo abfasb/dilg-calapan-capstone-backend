@@ -8,7 +8,9 @@ import {
   getSubmissionTrends,
   getLGUStats,
   getTrendData,
-  getRecentActivities
+  getRecentActivities,
+  getDashboardStats,
+  getReportTrends
 } from '../controllers/analyticsController';
 
 const router = express.Router();
@@ -24,6 +26,9 @@ router.get('/submission-trends', getSubmissionTrends);
 router.get('/stats', getLGUStats);
 router.get('/trends', getTrendData);
 router.get('/activities', getRecentActivities);
+
+router.get('/dashboard-stats', getDashboardStats);
+router.get('/report-trends', getReportTrends);
 
 
 export default router;

@@ -6,6 +6,7 @@ import { NextFunction, Request, Response } from 'express';
 import ResponseCitizen from '../models/ResponseCitizen';
 import Complaint from '../models/Complaint';
 import Event from '../models/Event';
+import Appointment from '../models/Appointment';
 
 export const getUserStats = async (req : Request, res : Response) => {
   try {
@@ -275,5 +276,112 @@ export const getRecentActivities = async (req: any, res: Response, next: NextFun
     res.json({ success: true, data: activities });
   } catch (error) {
     next(error);
+  }
+};
+
+
+export const getDashboardStats = async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
+  try {
+    const [
+      totalReports,
+      resolvedReports,
+      complaintsByCategory,
+      appointmentStats,
+      responseTimes,
+      userStats
+    ] = await Promise.all([
+      ResponseCitizen.aggregate([
+        { $group: { _id: null, count: { $sum: 1 } } }
+      ]),
+      ResponseCitizen.aggregate([
+        { $match: { status: 'resolved' } },
+        { $group: { _id: null, count: { $sum: 1 } } }
+      ]),
+      Complaint.aggregate([
+        { $group: { _id: '$category', count: { $sum: 1 } } }
+      ]),
+      Appointment.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      ResponseCitizen.aggregate([
+        { $match: { status: 'resolved' } },
+        { 
+          $project: {
+            days: { 
+              $ceil: { 
+                $divide: [
+                  { $subtract: ['$updatedAt', '$createdAt'] }, 
+                  1000 * 60 * 60 * 24
+                ] 
+              } 
+            } 
+          } 
+        },
+        { $group: { _id: null, avg: { $avg: '$days' } } }
+      ]),
+      User.aggregate([
+        { $match: { role: 'citizen' } },
+        { $group: { _id: null, count: { $sum: 1 } } }
+      ])
+    ]);
+
+    const stats = {
+      totalReports: totalReports[0]?.count || 0,
+      resolutionRate: ((resolvedReports[0]?.count || 0) / (totalReports[0]?.count || 1)) * 100, 
+      avgResponseTime: responseTimes.length > 0 ? responseTimes[0]?.avg || 0 : 0, 
+      activeUsers: userStats[0]?.count || 0,
+      complaintsByCategory: complaintsByCategory.reduce((acc, curr) => {
+        acc[curr._id] = curr.count;
+        return acc;
+      }, {}),
+      appointmentStats: appointmentStats.reduce((acc, curr) => {
+        acc[curr._id] = curr.count;
+        return acc;
+      }, {})
+    };
+    
+
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+export const getReportTrends = async (req : Request, res : Response, next : NextFunction) : Promise<void> => {
+  try {
+    const trends = await ResponseCitizen.aggregate([
+      {
+        $group: {
+          _id: { $month: '$createdAt' },
+          total: { $sum: 1 },
+          resolved: {
+            $sum: { $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $project: {
+          month: '$_id',
+          total: 1,
+          resolved: 1,
+          pending: { $subtract: ['$total', '$resolved'] }
+        }
+      },
+      { $sort: { month: 1 } }
+    ]);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+                       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    const formatted = trends.map(t => ({
+      name: monthNames[t.month - 1],
+      reports: t.total,
+      resolved: t.resolved,
+      pending: t.pending
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
   }
 };

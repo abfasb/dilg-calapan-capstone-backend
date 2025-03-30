@@ -4,6 +4,8 @@
   import ResponseCitizen from '../models/ResponseCitizen';
   import multer from 'multer';
   import bucket from '../config/firebaseConfig';
+  import _ from 'lodash';
+
 
   const router = Express.Router();
 
@@ -39,19 +41,21 @@ const generateReferenceNumber = () => {
   return `DILG-${year}${month}${day}-${random}`;
 };
 
-router.post('/:id/responses', upload.any(), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/responses', upload.any(), async (req: Request, res: Response): Promise<void> => {
   try {
     const referenceNumber = generateReferenceNumber();
-    const formData: Record<string, any> = { ...req.body };
+    const submissionType = req.body.submissionType;
     const uploadedFiles: { filename: string; url: string; mimetype: string }[] = [];
+    let bulkFileData = null;
+    const fieldNames: string[] = [];
 
     if (Array.isArray(req.files)) {
       for (const file of req.files) {
-        const multerFile = file; 
-        const fileRef = bucket.file(`uploads/${referenceNumber}/${multerFile.originalname}`);
-        
-        await fileRef.save(multerFile.buffer, {
-          metadata: { contentType: multerFile.mimetype },
+        fieldNames.push(file.fieldname);
+
+        const fileRef = bucket.file(`uploads/${referenceNumber}/${file.originalname}`);
+        await fileRef.save(file.buffer, {
+          metadata: { contentType: file.mimetype },
         });
 
         const [url] = await fileRef.getSignedUrl({
@@ -59,27 +63,42 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response, 
           expires: '03-01-2030',
         });
 
-        uploadedFiles.push({ filename: multerFile.originalname, url, mimetype: multerFile.mimetype });
+        if (submissionType === 'file') {
+          bulkFileData = {
+            fileName: file.originalname,
+            fileType: file.mimetype,
+            fileUrl: url,
+            uploadedAt: new Date()
+          };
+        } else {
+          uploadedFiles.push({
+            filename: file.originalname,
+            url,
+            mimetype: file.mimetype
+          });
+        }
       }
-    }
-
-    if (uploadedFiles.length > 0) {
-      formData.files = uploadedFiles;
     }
 
     const newSubmission = new ResponseCitizen({
       referenceNumber,
       formId: req.params.id,
       userId: req.body.userId,
-      data: formData,
-      createdAt: new Date(),
+      submissionType,
+      data: submissionType === 'form' ? _.omit(req.body, fieldNames) : null,
+      files: submissionType === 'form' ? uploadedFiles : [],
+      bulkFile: submissionType === 'file' ? bulkFileData : null,
+      status: "pending",
+      createdAt: new Date()
     });
 
     await newSubmission.save();
 
     res.status(201).json({
       referenceNumber,
-      submissionData: formData,
+      submissionType,
+      fileName: bulkFileData?.fileName || '',
+      submissionData: submissionType === 'form' ? req.body : null
     });
 
   } catch (error) {
