@@ -11,6 +11,7 @@ import AppointmentRoutes from './routes/AppointmentRoutes';
 import EventRoutes from './routes/EventRoutes';
 import FormRoutes from './routes/lgu/FormRoutes'
 import NotificationRoutes from './routes/NotificationRoutes';
+import AnalyticsAdminRoutes from './routes/AnalyticsAdminRoutes';
 
 import ResponseRoutes from './routes/lgu/ResponseRoutes'
 
@@ -58,6 +59,7 @@ app.use('/admin', UserRoutes);
 app.use('/lgu', PendingLguRoutes);
 app.use('/form', ReportRoutes);
 app.use('/analytics', AnalyticsRoutes);
+app.use('/api/analytics/admin/', AnalyticsAdminRoutes);
 app.use('/api/faqs', FAQRoutes);
 app.use('/api/blogs', BlogsRoutes);
 app.use('/complaints', ComplaintRoutes)

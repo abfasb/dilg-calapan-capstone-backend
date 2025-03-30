@@ -6,9 +6,16 @@ const submissionSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, required: true },
     data: { type: Map, of: mongoose.Schema.Types.Mixed },
     files: [{
-      fieldId: String,
-      fileNames: [String]
+      filename: String,
+      url: String,
+      mimetype: String
     }],
+    bulkFile: {
+      fileName: String,
+      fileType: String,
+      fileUrl: String,
+      uploadedAt: Date
+    },
     status: { 
       type: String, 
       enum: ["pending", "approved", "rejected"], 
