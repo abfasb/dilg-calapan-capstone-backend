@@ -22,8 +22,6 @@ export const getReportForms = async (req : Request, res : Response, next : NextF
     }
   }
 
-
-
   
 
 export const updateReportForms = async (req : Request, res : Response, next : NextFunction) : Promise <void> => {
