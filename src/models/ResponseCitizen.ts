@@ -21,6 +21,15 @@ const submissionSchema = new mongoose.Schema({
       enum: ["pending", "approved", "rejected"], 
       default: "pending" 
     },
+    history: [{
+      status: String,
+      updatedBy: String,
+      document: String,
+      timestamp: {
+        type: Date,
+        default: Date.now
+      }
+    }],
     createdAt: { type: Date, default: Date.now }
   });
 
