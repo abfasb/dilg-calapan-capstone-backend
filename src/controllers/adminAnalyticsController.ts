@@ -1,122 +1,118 @@
-import Complaint from '../models/Complaint'
-import User from '../models/User'
-import Appointment from '../models/Appointment'
-import ResponseCitizen from '../models/ResponseCitizen'
-import { NextFunction, Request, Response } from 'express'
+import { Request, Response } from 'express';
+import Complaint from '../models/Complaint';
+import User from '../models/User';
+import Appointment from '../models/Appointment';
+import ResponseCitizen from '../models/ResponseCitizen';
+import { calculateSatisfactionScore } from '../../utils/analytics';
 
-export const getDashboardStats = async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
+export const getDashboardData = async (req: Request, res: Response) => {
   try {
-    const complaints = await Complaint.aggregate([
-      {
-        $group: {
-          _id: null,
-          total: { $sum: 1 },
-          resolved: { $sum: { $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0] } }
+    const [
+      complaints,
+      users,
+      appointments,
+      responses,
+      categories,
+      recentActivities
+    ] = await Promise.all([
+      ResponseCitizen.aggregate([
+        {
+          $facet: {
+            total: [{ $count: "count" }],
+            resolved: [{ $match: { status: "approved" } }, { $count: "count" }]
+          }
         }
-      }
-    ])
+      ]),
+      
+      User.aggregate([
+        { $match: { role: 'citizen' } },
+        { $count: "count" }
+      ]),
+      
+      Appointment.aggregate([
+        { $group: { _id: "$status", count: { $sum: 1 } } }
+      ]),
+      
+      ResponseCitizen.aggregate([
+        { 
+          $group: { 
+            _id: { $cond: [{ $ne: ["$bulkFile", null] }, "file", "form"] },
+            count: { $sum: 1 }
+          } 
+        }
+      ]),
+      
+      Complaint.aggregate([
+        { $group: { _id: "$category", count: { $sum: 1 } } },
+        { $project: { category: "$_id", count: 1, _id: 0 } }
+      ]),
+      
+      Complaint.aggregate([
+        { $sort: { createdAt: -1 } },
+        { $limit: 10 },
+        { $project: { 
+            title: 1,
+            description: 1,
+            type: "complaint",
+            timestamp: "$createdAt",
+            status: 1
+          } 
+        }
+      ])
+    ]);
 
-    const users = await User.aggregate([
-      { $match: { role: 'citizen' } },
-      { $group: { _id: null, count: { $sum: 1 } } }
-    ])
-
-    const appointments = await Appointment.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 } } }
-    ])
-
-    const responses = await ResponseCitizen.aggregate([
-      { 
-        $group: { 
-          _id: { $cond: [{ $ne: ['$bulkFile', null] }, 'file', 'form'] },
-          count: { $sum: 1 }
-        } 
-      }
-    ])
-
-    res.json({
-      totalReports: complaints[0]?.total || 0,
-      resolvedCases: complaints[0]?.resolved || 0,
+    const totalReports = complaints[0]?.total[0]?.count || 0;
+    const resolvedCases = complaints[0]?.resolved[0]?.count || 0;
+    const avgResolution = await calculateAvgResolutionTime();
+    
+    const result = {
+      totalReports,
+      resolvedCases,
       registeredUsers: users[0]?.count || 0,
-      appointments: appointments.reduce((acc, curr) => ({
+      avgResolutionTime: avgResolution,
+      activeUsers: await User.countDocuments({ lastLogin: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
+      satisfaction: await calculateSatisfactionScore(),
+      userGrowth: await getUserGrowthData(),
+      appointmentStatus: appointments.reduce((acc, curr) => ({
         ...acc,
         [curr._id]: curr.count
       }), {}),
       responseTypes: responses.reduce((acc, curr) => ({
         ...acc,
         [curr._id]: curr.count
-      }), {})
-    })
+      }), {}),
+      categoryDistribution: categories,
+      recentActivities: recentActivities
+    };
 
-  } catch (error : any) {
-    res.status(500).json({ message: error.message })
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
   }
-}
+};
 
-export const getTrends = async(req : Request, res : Response) : Promise<void> => {
-  try {
-    const complaintTrends = await Complaint.aggregate([
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } },
-      { $project: { month: "$_id", count: 1, _id: 0 } }
-    ])
-
-    const userGrowth = await User.aggregate([
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } },
-      { $project: { month: "$_id", count: 1, _id: 0 } }
-    ])
-
-    res.json({
-      reports: complaintTrends,
-      users: userGrowth
-    })
-
-  } catch (error : any) {
-    res.status(500).json({ message: error.message })
-  }
-}
-
-export const getIncidentBreakdown = async (req : Request, res : Response) : Promise<void> => {
-  try {
-    const incidents = await Complaint.aggregate([
-      { $group: { _id: "$category", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $project: { category: "$_id", count: 1, _id: 0 } }
-    ])
-
-    res.json(incidents)
-  } catch (error : any) {
-    res.status(500).json({ message: error.message })
-  }
-}
-
-export const getRecentActivities = async(req : Request, res : Response) : Promise<void> => {
-  try {
-    const activities = await Complaint.aggregate([
-      { $sort: { createdAt: -1 } },
-      { $limit: 10 },
-      { $project: { 
-          title: 1,
-          description: 1,
-          type: { $cond: [{ $eq: ['$status', 'pending'] }, 'alert', 'update'] },
-          timestamp: "$createdAt"
-        } 
+const calculateAvgResolutionTime = async () => {
+  const result = await Complaint.aggregate([
+    { $match: { status: "resolved" } },
+    {
+      $group: {
+        _id: null,
+        avgDays: { $avg: { $divide: [{ $subtract: ["$updatedAt", "$createdAt"] }, 1000 * 60 * 60 * 24] } }
       }
-    ])
+    }
+  ]);
+  return result[0]?.avgDays ? Math.round(result[0].avgDays) : 0;
+};
 
-    res.json(activities)
-  } catch (error : any) {
-    res.status(500).json({ message: error.message })
-  }
-}
+const getUserGrowthData = async () => {
+  return User.aggregate([
+    {
+      $group: {
+        _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+        count: { $sum: 1 }
+      }
+    },
+    { $sort: { _id: 1 } },
+    { $project: { month: "$_id", count: 1, _id: 0 } }
+  ]);
+};
