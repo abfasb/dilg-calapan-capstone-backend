@@ -30,7 +30,7 @@ export const getResponseDetails = async (req: Request, res: Response): Promise<v
 
 export const updateResponseStatus = async (req: Request, res: Response) : Promise<void> => {
   try {
-    const { status, updatedBy } = req.body;
+    const { status, updatedBy, comments } = req.body;
     const response = await ResponseCitizen.findById(req.params.id);
 
     if (!response) {
@@ -52,10 +52,14 @@ export const updateResponseStatus = async (req: Request, res: Response) : Promis
       status,
       updatedBy,
       document: response.bulkFile?.fileName || response.referenceNumber,
-      timestamp: new Date()
+      timestamp: new Date(),
+      comments: comments || ''
     });
 
     response.status = status;
+    if (comments) {
+      response.comments = comments;  
+    }
     await Promise.all([globalHistoryEntry.save(), response.save()]);
 
     res.json(response);

@@ -19,8 +19,10 @@ const submissionSchema = new mongoose.Schema({
     status: { 
       type: String, 
       enum: ["pending", "approved", "rejected"], 
-      default: "pending" 
+      default: "pending",
+      comments: { type: String, required: false },
     },
+    comments: { type: String},
     history: [{
       status: String,
       updatedBy: String,
@@ -28,7 +30,8 @@ const submissionSchema = new mongoose.Schema({
       timestamp: {
         type: Date,
         default: Date.now
-      }
+      },
+      comments: String
     }],
     createdAt: { type: Date, default: Date.now }
   });
