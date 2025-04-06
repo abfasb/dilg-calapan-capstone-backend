@@ -1,5 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+interface ITemplateFile {
+  fileName: string;
+  fileUrl: string;
+  mimetype: string;
+}
+
 interface IFormField {
     type: "text" | "number" | "radio" | "checkbox" | "image" | "dropdown";
     label: string;
@@ -20,6 +26,7 @@ interface IFormField {
     createdAt: Date;
     fields: IFormField[];
     responses: IResponse[]; 
+    template: ITemplateFile;
   }
   
   const formSchema = new mongoose.Schema<IForm>({
@@ -33,6 +40,11 @@ interface IFormField {
         submittedAt: { type: Date, default: Date.now },
       },
     ],
+    template: {
+      fileName: String,
+      fileUrl: String,
+      mimetype: String
+    },
   });
   
   const ReportForms = mongoose.model<IForm>("ReportForms", formSchema);
