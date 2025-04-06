@@ -259,3 +259,15 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction):
           res.status(500).json({ error});
 }
 }
+
+
+export const getLGUUsers = async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
+    try {
+      const users = await User.find({ role: 'lgu' })
+        .select('-password -__v')
+        .lean();
+      res.status(200).json(users);
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching LGU users', error });
+    }
+  };

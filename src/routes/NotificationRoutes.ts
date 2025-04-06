@@ -1,4 +1,3 @@
-// Notification route
 import express from 'express';
 import admin from 'firebase-admin';
 import User from '../models/User';

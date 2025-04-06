@@ -1,9 +1,10 @@
   import Express, { NextFunction, Request, Response } from 'express';
-  import { createReport, getReportForms, getUserReports, updateReportForms, getUserReportsAndTracking} from '../controllers/reportController';
+  import { createReport, getReportForms, getUserReports, updateReportForms, getUserReportsAndTracking, getSubmissionController} from '../controllers/reportController';
   import ReportForms from '../models/ReportForm';
   import ResponseCitizen from '../models/ResponseCitizen';
   import multer from 'multer';
   import bucket from '../config/firebaseConfig';
+  import { v4 as uuidv4 } from 'uuid';
   import _ from 'lodash';
 
 
@@ -11,7 +12,58 @@
 
   const upload: multer.Multer = multer({ storage: multer.memoryStorage() });
 
-router.post('/create-report', createReport);
+  router.post(
+    '/create-report',
+    upload.single('template'), 
+    async (req: Request, res: Response) => {
+      try {
+        const { title, description, submissionType, fields } = req.body;
+        const uploadedFile = req.file
+  
+        let templateData = undefined;
+  
+        if (uploadedFile) {
+          const fileRef = bucket.file(`uploads/${uuidv4()}-${uploadedFile.originalname}`);
+  
+          await fileRef.save(uploadedFile.buffer, {
+            metadata: { contentType: uploadedFile.mimetype },
+          });
+  
+          const [fileUrl] = await fileRef.getSignedUrl({
+            action: 'read',
+            expires: '03-01-2030',
+          });
+  
+          templateData = {
+            fileName: uploadedFile.originalname,
+            fileUrl,
+            mimetype: uploadedFile.mimetype,
+            uploadedAt: new Date(),
+          };
+        }
+  
+        const newForm = new ReportForms({
+          title,
+          description,
+          submissionType,
+          fields: JSON.parse(fields),
+          template: templateData,
+        });
+  
+        await newForm.save();
+  
+        res.status(201).json({
+          message: 'Form saved successfully',
+          fileUrl: templateData?.fileUrl
+        });
+      } catch (err) {
+        console.error('Form creation error:', err);
+        res.status(500).json({ error: 'Error saving form' });
+      }
+    }
+  );
+  
+
 router.get('/get-report', getReportForms);
 router.put('/update-report/:id', updateReportForms);
 
@@ -119,6 +171,7 @@ export default router;
 
 router.get('/my-reports-track/:id', getUserReportsAndTracking);
 
+router.get('/report/:id', getSubmissionController);
 
 export default router;
 
