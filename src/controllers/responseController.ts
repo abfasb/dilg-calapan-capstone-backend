@@ -130,7 +130,7 @@ export const getResponseById = async (req: Request, res: Response): Promise<void
 
 export const updateResponse = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { data, submissionType } = req.body;
+    const { submissionType } = req.body;
     const uploadedFiles = req.files as Express.Multer.File[];
     const updateData: any = {
       status: 'pending',
@@ -138,10 +138,18 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
       $unset: { comments: 1 }
     };
 
+    // Fetch existing response first
+    const existingResponse = await ResponseCitizen.findById(req.params.id);
+    if (!existingResponse) {
+      res.status(404).json({ message: 'Response not found' });
+      return;
+    }
+
     const processedFiles = [];
     if (uploadedFiles.length > 0) {
       for (const file of uploadedFiles) {
-        const fileRef = bucket.file(`uploads/${req.params.id}/${file.originalname}`);
+        const filePath = `uploads/${req.params.id}/${Date.now()}_${file.originalname}`;
+        const fileRef = bucket.file(filePath);
         await fileRef.save(file.buffer, { metadata: { contentType: file.mimetype } });
         const [url] = await fileRef.getSignedUrl({ action: 'read', expires: '03-01-2030' });
         
@@ -154,11 +162,35 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
     }
 
     if (submissionType === 'form') {
-      updateData.data = JSON.parse(data);
+      updateData.data = JSON.parse(req.body.data);
       
       if (processedFiles.length > 0) {
         updateData.$set = { files: processedFiles };
       }
+    } else if (submissionType === 'bulk') {
+      if (processedFiles.length === 0) {
+        throw new Error('No file uploaded for bulk submission');
+      }
+
+      if (existingResponse.bulkFile?.fileUrl) {
+        const decodedUrl = decodeURIComponent(existingResponse.bulkFile.fileUrl);
+        const match = decodedUrl.match(/\/o\/(.*?)\?/);
+        if (match && match[1]) {
+          const filePath = match[1];
+          const oldFileRef = bucket.file(filePath);
+          await oldFileRef.delete().catch(console.error);
+        }
+      }
+      
+
+      updateData.$set = {
+        bulkFile: {
+          fileName: processedFiles[0].filename,
+          fileType: processedFiles[0].mimetype,
+          fileUrl: processedFiles[0].url,
+          uploadedAt: new Date()
+        }
+      };
     }
 
     const updatedResponse = await ResponseCitizen.findByIdAndUpdate(

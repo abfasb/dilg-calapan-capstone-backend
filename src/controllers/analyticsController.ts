@@ -280,7 +280,7 @@ export const getRecentActivities = async (req: any, res: Response, next: NextFun
 };
 
 
-export const getDashboardStats = async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
+export const getDashboardStats = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const [
       totalReports,
@@ -304,20 +304,33 @@ export const getDashboardStats = async (req : Request, res : Response, next: Nex
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]),
       ResponseCitizen.aggregate([
-        { $match: { status: 'resolved' } },
+        { 
+          $match: { 
+            status: 'resolved',
+            updatedAt: { $exists: true },
+            createdAt: { $exists: true }
+          } 
+        },
         { 
           $project: {
-            days: { 
+            responseDays: { 
               $ceil: { 
                 $divide: [
-                  { $subtract: ['$updatedAt', '$createdAt'] }, 
+                  { $subtract: ["$updatedAt", "$createdAt"] }, 
                   1000 * 60 * 60 * 24
                 ] 
               } 
             } 
           } 
         },
-        { $group: { _id: null, avg: { $avg: '$days' } } }
+        { 
+          $group: { 
+            _id: null,
+            avg: { $avg: "$responseDays" },
+            min: { $min: "$responseDays" },
+            max: { $max: "$responseDays" }
+          } 
+        }
       ]),
       User.aggregate([
         { $match: { role: 'citizen' } },
@@ -325,10 +338,18 @@ export const getDashboardStats = async (req : Request, res : Response, next: Nex
       ])
     ]);
 
+    const responseTimeData = responseTimes.length > 0 ? responseTimes[0] : {
+      avg: 0,
+      min: 0,
+      max: 0
+    };
+
     const stats = {
       totalReports: totalReports[0]?.count || 0,
-      resolutionRate: ((resolvedReports[0]?.count || 0) / (totalReports[0]?.count || 1)) * 100, 
-      avgResponseTime: responseTimes.length > 0 ? responseTimes[0]?.avg || 0 : 0, 
+      resolutionRate: ((resolvedReports[0]?.count || 0) / (totalReports[0]?.count || 1)) * 100,
+      avgResponseTime: responseTimeData.avg ? Number(responseTimeData.avg.toFixed(1)) : 0,
+      fastestResponseTime: responseTimeData.min || 0,
+      longestResponseTime: responseTimeData.max || 0,
       activeUsers: userStats[0]?.count || 0,
       complaintsByCategory: complaintsByCategory.reduce((acc, curr) => {
         acc[curr._id] = curr.count;
@@ -339,7 +360,6 @@ export const getDashboardStats = async (req : Request, res : Response, next: Nex
         return acc;
       }, {})
     };
-    
 
     res.json(stats);
   } catch (error) {
