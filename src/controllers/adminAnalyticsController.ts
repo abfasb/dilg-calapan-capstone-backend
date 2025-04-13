@@ -1,9 +1,10 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Complaint from '../models/Complaint';
 import User from '../models/User';
 import Appointment from '../models/Appointment';
 import ResponseCitizen from '../models/ResponseCitizen';
 import { calculateSatisfactionScore } from '../../utils/analytics';
+import ReportForms from '../models/ReportForm';
 
 export const getDashboardData = async (req: Request, res: Response) => {
   try {
@@ -116,3 +117,39 @@ const getUserGrowthData = async () => {
     { $project: { month: "$_id", count: 1, _id: 0 } }
   ]);
 };
+
+export const getReports = async (req: Request, res: Response, next : NextFunction) : Promise<void> => {
+  try {
+    const reports = await ReportForms.find()
+    res.json(reports)
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
+
+export const getApprovedResponses = async (req: Request, res: Response, next : NextFunction) : Promise<void> => {
+  try {
+    const { formId } = req.query
+    const user = await User.findById((req.user as { id: string })?.id)
+    
+    const responses = await ResponseCitizen.find({
+      formId,
+      status: 'approved',
+      'user.barangay': user?.barangay
+    })
+    .populate<{ userId: { firstName: string; lastName: string; barangay: string } }>('userId', 'firstName lastName barangay')
+    
+    const formattedResponses = responses.map(response => ({
+      ...response.toObject(),
+      user: {
+        firstName: response.userId?.firstName,
+        lastName: response.userId.lastName,
+        barangay: response.userId.barangay
+      }
+    }))
+
+    res.json(formattedResponses)
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' })
+  }
+}
