@@ -127,29 +127,45 @@ export const getReports = async (req: Request, res: Response, next : NextFunctio
   }
 }
 
-export const getApprovedResponses = async (req: Request, res: Response, next : NextFunction) : Promise<void> => {
+export const getApprovedResponses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { formId } = req.query
-    const user = await User.findById((req.user as { id: string })?.id)
-    
+    const { formId } = req.query;
+    const user = await User.findById((req.user as { id: string })?.id);
+
     const responses = await ResponseCitizen.find({
       formId,
       status: 'approved',
       'user.barangay': user?.barangay
     })
     .populate<{ userId: { firstName: string; lastName: string; barangay: string } }>('userId', 'firstName lastName barangay')
-    
-    const formattedResponses = responses.map(response => ({
-      ...response.toObject(),
-      user: {
-        firstName: response.userId?.firstName,
-        lastName: response.userId.lastName,
-        barangay: response.userId.barangay
-      }
-    }))
+    .lean(); 
 
-    res.json(formattedResponses)
+    const formattedResponses = responses.map(response => {
+      const formData = Object.entries(response.data || {}).reduce((acc, [key, value]) => {
+        if (!['userId', 'submissionType'].includes(key)) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {} as Record<string, any>);
+
+      return {
+        ...response,
+        files: response.files.map(file => ({
+          filename: file.filename,
+          url: file.url,
+          mimetype: file.mimetype
+        })),    
+        data: formData,
+        user: {
+          firstName: response.userId?.firstName,
+          lastName: response.userId?.lastName,
+          barangay: response.userId?.barangay
+        }
+      };
+    });
+
+    res.json(formattedResponses);
   } catch (error) {
-    res.status(500).json({ message: 'Server error' })
+    res.status(500).json({ message: 'Server error' });
   }
-}
+};
