@@ -12,6 +12,7 @@ import EventRoutes from './routes/EventRoutes';
 import FormRoutes from './routes/lgu/FormRoutes'
 import NotificationRoutes from './routes/NotificationRoutes';
 import AnalyticsAdminRoutes from './routes/AnalyticsAdminRoutes';
+import AuditLogsRoutes from './routes/AuditLogsRoutes';
 
 import ResponseRoutes from './routes/lgu/ResponseRoutes'
 
@@ -68,6 +69,7 @@ app.use('/events', EventRoutes);
 app.use('/api/form', FormRoutes);
 app.use('/api/response', ResponseRoutes);
 app.use('/api/notify', NotificationRoutes);
+app.use('/api/audit-logs', AuditLogsRoutes);
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
