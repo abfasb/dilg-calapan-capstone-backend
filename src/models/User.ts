@@ -17,7 +17,8 @@ export interface IUser extends Document {
     createdAt: Date,
     updatedAt: Date,
     lastLogin: Date,
-    fcmToken?: string; 
+    fcmToken?: string;
+    lastActivity: Date; 
 }
 
 const UserSchema : Schema = new Schema ({
