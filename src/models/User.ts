@@ -63,6 +63,10 @@ const UserSchema : Schema = new Schema ({
     lastLogin: {
         type: Date
     },
+    lastActivity: {
+        type: Date,
+        default: Date.now
+    },
 }, { timestamps: true})
 
 const User = mongoose.model<IUser>('User', UserSchema);

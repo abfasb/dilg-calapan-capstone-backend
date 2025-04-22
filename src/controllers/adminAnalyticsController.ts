@@ -160,7 +160,13 @@ export const getApprovedResponses = async (req: Request, res: Response, next: Ne
           firstName: response.userId?.firstName,
           lastName: response.userId?.lastName,
           barangay: response.userId?.barangay
-        }
+        },
+        signature: response.signature ? {
+          fileName: response.signature.fileName,
+          fileUrl: response.signature.fileUrl,
+          fileType: response.signature.mimetype,
+          signedAt: response.signature.signedAt
+        } : undefined
       };
     });
 
