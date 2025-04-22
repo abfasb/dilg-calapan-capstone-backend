@@ -31,14 +31,38 @@ export const getResponseDetails = async (req: Request, res: Response): Promise<v
   }
 };
 
-export const updateResponseStatus = async (req: Request, res: Response) : Promise<void> => {
+export const updateResponseStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, updatedBy, comments } = req.body;
+    const signatureFile = req.file;
     const response = await ResponseCitizen.findById(req.params.id);
 
     if (!response) {
-       res.status(404).json({ message: 'Response not found' });
-       return;
+      res.status(404).json({ message: 'Response not found' });
+      return;
+    }
+
+    if (status === 'approved' && !signatureFile) {
+      res.status(400).json({ message: 'Signature is required for approval' });
+      return;
+    }
+
+    let signatureData = null;
+    if (status === 'approved' && signatureFile) {
+      const fileRef = bucket.file(`signatures/${uuidv4()}-${signatureFile.originalname}`);
+      await fileRef.save(signatureFile.buffer, {
+        metadata: { contentType: signatureFile.mimetype },
+      });
+      const [fileUrl] = await fileRef.getSignedUrl({
+        action: 'read',
+        expires: '03-01-2030',
+      });
+      signatureData = {
+        fileName: signatureFile.originalname,
+        fileUrl,
+        mimetype: signatureFile.mimetype,
+        signedAt: new Date(),
+      };
     }
 
     const globalHistoryEntry = new StatusHistory({
@@ -60,11 +84,10 @@ export const updateResponseStatus = async (req: Request, res: Response) : Promis
     });
 
     response.status = status;
-    if (comments) {
-      response.comments = comments;  
-    }
-    await Promise.all([globalHistoryEntry.save(), response.save()]);
+    if (comments) response.comments = comments;
+    if (signatureData) response.signature = signatureData;
 
+    await Promise.all([globalHistoryEntry.save(), response.save()]);
     res.json(response);
   } catch (error) {
     console.error(error);

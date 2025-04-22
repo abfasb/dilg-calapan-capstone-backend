@@ -8,7 +8,11 @@ const upload: multer.Multer = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
 
 router.get('/:formId', getResponsesByForm);
-router.put('/:id', updateResponseStatus);
+router.put(
+    '/:id', 
+    upload.single('signature'),
+    updateResponseStatus
+  );
 
 router.get('/details/:id', getResponseDetails);
 router.get('/history/combined', getCombinedHistory);

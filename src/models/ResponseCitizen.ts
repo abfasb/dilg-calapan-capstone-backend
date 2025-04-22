@@ -23,6 +23,12 @@ const submissionSchema = new mongoose.Schema({
       comments: { type: String, required: false },
     },
     comments: { type: String},
+    signature: {
+      fileName: { type: String },
+      fileUrl: { type: String },
+      mimetype: { type: String },
+      signedAt: { type: Date },
+    },
     history: [{
       status: String,
       updatedBy: String,
