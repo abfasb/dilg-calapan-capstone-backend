@@ -44,7 +44,7 @@ const UserSchema : Schema = new Schema ({
     },
     barangay: {
         type: String, 
-        required: true
+        required: false
     },
     position: {
         type: String, 

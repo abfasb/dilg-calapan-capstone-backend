@@ -8,6 +8,7 @@ export interface ILGU extends Document {
   position: string;
   phoneNumber: string;
   status: "pending" | "approved" | "rejected";
+  barangay?: string;
 }
 
 const lguSchema = new Schema<ILGU>(
