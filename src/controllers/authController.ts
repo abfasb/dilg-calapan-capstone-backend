@@ -87,6 +87,7 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
             id: findUser._id,
             email: findUser.email,
             role: findUser.role,
+            position: findUser.position,
           },
         });
         return;
@@ -201,27 +202,27 @@ export const forgotPasswordUser = async (req: Request, res: Response, next: Next
     }
 };
 
-export const resetPasswordGetEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-        const { token } = req.params;
-        const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+  export const resetPasswordGetEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+      try {
+          const { token } = req.params;
+          const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
 
-        let user = await User.findOne({ resetToken: hashedToken, resetTokenExpiry: { $gt: Date.now() } }).select("email");
-        if (!user) {
-            user = await GoogleUser.findOne({ resetToken: hashedToken, resetTokenExpiry: { $gt: Date.now() } }).select("email");
-        }
+          let user = await User.findOne({ resetToken: hashedToken, resetTokenExpiry: { $gt: Date.now() } }).select("email");
+          if (!user) {
+              user = await GoogleUser.findOne({ resetToken: hashedToken, resetTokenExpiry: { $gt: Date.now() } }).select("email");
+          }
 
-        if (!user) {
-            res.status(404).json({ message: "Invalid or expired token" });
-            return;
-        }
+          if (!user) {
+              res.status(404).json({ message: "Invalid or expired token" });
+              return;
+          }
 
-        res.json({ email: user.email });
-    } catch (error) {
-        console.error("Error in resetPasswordGetEmail:", error);
-        next(error);
-    }
-};
+          res.json({ email: user.email });
+      } catch (error) {
+          console.error("Error in resetPasswordGetEmail:", error);
+          next(error);
+      }
+  };
 
 export const resetPasswordUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
