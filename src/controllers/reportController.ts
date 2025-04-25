@@ -187,7 +187,7 @@ export const getSubmissionController = async (req : Request, res : Response, nex
 
 export const getUserDocuments = async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
   try {
-    const documents = await ReportForms.find({ userId: req.query.userId })
+    const documents = await ResponseCitizen.find({ userId: req.query.userId })
       .select('-__v')
       .lean();
     res.status(200).json(documents);
@@ -198,7 +198,7 @@ export const getUserDocuments = async (req : Request, res : Response, next: Next
 
 export const getDocumentStatusHistory =  async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
   try {
-    const history = await StatusHistory.find({ documentId: req.query.documentId })
+    const history = await StatusHistory.find({ formId: req.query.formId })
       .select('-__v')
       .sort({ timestamp: -1 })
       .lean();
