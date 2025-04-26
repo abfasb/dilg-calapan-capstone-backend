@@ -41,7 +41,6 @@ const submissionSchema = new mongoose.Schema({
       },
       assignedLgu: { type: Schema.Types.ObjectId, ref: 'User' },
       currentStatus: String,
-      comments: String
     }],
     createdAt: { type: Date, default: Date.now }
   });

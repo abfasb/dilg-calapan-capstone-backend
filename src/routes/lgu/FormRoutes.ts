@@ -11,6 +11,6 @@ router.get('/:id', getFormById);
 router.get('/users/haha', getLGUUsers)
 router.get('/documents/haha', getUserDocuments)
 router.get('/statushistories/haha', getDocumentStatusHistory)
-router.get('/lgu-documents', getLGUProcessedDocuments)
+router.get('/lgudocuments', getLGUProcessedDocuments)
 
 export default router;

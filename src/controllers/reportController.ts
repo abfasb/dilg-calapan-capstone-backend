@@ -4,6 +4,7 @@ import ResponseCitizen from '../models/ResponseCitizen';
 import StatusHistory from '../models/StatusHistory';
 import bucket from '../config/firebaseConfig';
 import { v4 as uuidv4 } from 'uuid';
+import mongoose from 'mongoose';
 
 export const createReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -196,43 +197,56 @@ export const getUserDocuments = async (req : Request, res : Response, next: Next
   }
 };
 
-export const getDocumentStatusHistory =  async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
+
+export const getLGUProcessedDocuments = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
   try {
-    const history = await StatusHistory.find({ formId: req.query.formId })
+    const lguName = req.query.lguName as string;
+    
+    if (!lguName) {
+      res.status(400).json({ message: 'lguName parameter is required' });
+      return;
+    }
+
+    const histories = await StatusHistory.find({ updatedBy: lguName })
+      .select('documentId')
+      .lean();
+
+    const documentIds = [...new Set(histories.map(h => h.documentId))]
+      .filter(id => mongoose.Types.ObjectId.isValid(id))
+      .map(id => new mongoose.Types.ObjectId(id));
+
+    if (documentIds.length === 0) {
+      res.status(200).json([]);
+      return;
+    }
+
+    const documents = await ResponseCitizen.find({ 
+      _id: { $in: documentIds },
+      status: { $ne: 'pending' }
+    }).select('-__v -history');
+
+    res.status(200).json(documents);
+  } catch (error : any) {
+    console.error('Error details:', {
+      error,
+      query: req.query,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      message: 'Error fetching LGU documents',
+      error: error.message
+    });
+  }
+};
+
+export const getDocumentStatusHistory = async (req: Request, res: Response) => {
+  try {
+    const history = await StatusHistory.find({ documentId: req.query.formId })
       .select('-__v')
       .sort({ timestamp: -1 })
       .lean();
     res.status(200).json(history);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching status history', error });
-  }
-};
-
-
-export const getLGUProcessedDocuments = async (req: Request, res: Response) => {
-  try {
-    const documents = await ResponseCitizen.aggregate([
-      {
-        $lookup: {
-          from: 'statushistories',
-          let: { docId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$documentId', '$$docId'] },
-                updatedBy: req.query.lguName
-              }
-            }
-          ],
-          as: 'histories'
-        }
-      },
-      { $match: { 'histories.0': { $exists: true } } },
-      { $project: { __v: 0, histories: 0 } }
-    ]);
-
-    res.status(200).json(documents);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching LGU documents', error });
   }
 };
