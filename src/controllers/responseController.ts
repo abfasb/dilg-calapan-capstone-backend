@@ -4,6 +4,7 @@ import StatusHistory from '../models/StatusHistory';
 import bucket from '../config/firebaseConfig';
 import { v4 as uuidv4 } from 'uuid';
 import _ from 'lodash';
+import mongoose from 'mongoose';
 
 export const getResponsesByForm = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
   try {
@@ -72,12 +73,22 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
       previousStatus: response.status,
       newStatus: status,
       updatedBy,
-      formId: response.formId
+      lguId: new mongoose.Types.ObjectId(req.body.lgu?.id), 
+      lguName: req.body.lgu?.name,
+      formId: response.formId,
     });
+
+
+    const lguId = req.body.lgu?.id 
+      ? new mongoose.Types.ObjectId(req.body.lgu.id) 
+      : null;
+    const lguName = req.body.lgu?.name;
 
     response.history.push({
       status,
       updatedBy,
+      lguId,
+      lguName,
       document: response.bulkFile?.fileName || response.referenceNumber,
       timestamp: new Date(),
       comments: comments || ''
@@ -94,6 +105,7 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 export const getCombinedHistory = async (req: Request, res: Response) : Promise<void> => {
   try {

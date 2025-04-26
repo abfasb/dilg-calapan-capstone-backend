@@ -1,7 +1,6 @@
-// form.routes.ts
 import express from 'express';
 import { getForms, getFormById } from '../../controllers/formController';
-import { getDocumentStatusHistory, getUserDocuments } from '../../controllers/reportController';
+import { getDocumentStatusHistory, getLGUProcessedDocuments, getUserDocuments } from '../../controllers/reportController';
 import { getLGUUsers } from '../../controllers/authController';
 
 const router = express.Router();
@@ -12,5 +11,6 @@ router.get('/:id', getFormById);
 router.get('/users/haha', getLGUUsers)
 router.get('/documents/haha', getUserDocuments)
 router.get('/statushistories/haha', getDocumentStatusHistory)
+router.get('/lgu-documents', getLGUProcessedDocuments)
 
 export default router;

@@ -207,3 +207,32 @@ export const getDocumentStatusHistory =  async (req : Request, res : Response, n
     res.status(500).json({ message: 'Error fetching status history', error });
   }
 };
+
+
+export const getLGUProcessedDocuments = async (req: Request, res: Response) => {
+  try {
+    const documents = await ResponseCitizen.aggregate([
+      {
+        $lookup: {
+          from: 'statushistories',
+          let: { docId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: { $eq: ['$documentId', '$$docId'] },
+                updatedBy: req.query.lguName
+              }
+            }
+          ],
+          as: 'histories'
+        }
+      },
+      { $match: { 'histories.0': { $exists: true } } },
+      { $project: { __v: 0, histories: 0 } }
+    ]);
+
+    res.status(200).json(documents);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching LGU documents', error });
+  }
+};

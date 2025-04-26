@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
 
 const submissionSchema = new mongoose.Schema({
     referenceNumber: { type: String, unique: true, required: true },
@@ -32,11 +32,15 @@ const submissionSchema = new mongoose.Schema({
     history: [{
       status: String,
       updatedBy: String,
+      lguId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
+      lguName: String, 
       document: String,
       timestamp: {
         type: Date,
         default: Date.now
       },
+      assignedLgu: { type: Schema.Types.ObjectId, ref: 'User' },
+      currentStatus: String,
       comments: String
     }],
     createdAt: { type: Date, default: Date.now }
