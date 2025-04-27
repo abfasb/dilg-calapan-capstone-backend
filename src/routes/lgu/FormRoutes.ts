@@ -8,8 +8,9 @@ const router = express.Router();
 router.get('/', getForms);
 router.get('/:id', getFormById);
 
-router.get('/users/haha', getLGUUsers)
 router.get('/documents/haha', getUserDocuments)
+
+router.get('/users/haha', getLGUUsers)
 router.get('/statushistories/haha', getDocumentStatusHistory)
 router.get('/lgudocuments', getLGUProcessedDocuments)
 

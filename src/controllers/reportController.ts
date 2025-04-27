@@ -198,55 +198,136 @@ export const getUserDocuments = async (req : Request, res : Response, next: Next
 };
 
 
-export const getLGUProcessedDocuments = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
+export const getLGUProcessedDocuments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const lguName = req.query.lguName as string;
+    const { status, lguId } = req.query;
+
+    const filter: any = {};
+
+    if (status && ['pending', 'approved', 'rejected'].includes(status as string)) {
+      filter.status = status;
+    }
+
+    if (lguId && mongoose.isValidObjectId(lguId)) {
+      filter['history.lguId'] = new mongoose.Types.ObjectId(lguId as string);
+    }
     
-    if (!lguName) {
-      res.status(400).json({ message: 'lguName parameter is required' });
-      return;
-    }
+    const aggregationPipeline = [
+      { $match: filter },
+      {
+        $lookup: {
+          from: 'Users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'citizen'
+        }
+      },
+      { $unwind: '$citizen' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'history.lguId',
+          foreignField: '_id',
+          as: 'lguUsers'
+        }
+      },
+      {
+        $project: {
+          referenceNumber: 1,
+          status: 1,
+          'citizen.firstName': 1,
+          'citizen.lastName': 1,
+          submittedDate: '$createdAt',
+          processedDate: { $max: '$history.timestamp' },
+          comments: 1,
+          history: {
+            $map: {
+              input: '$history',
+              as: 'h',
+              in: {
+                status: '$$h.status',
+                updatedBy: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$lguUsers',
+                        as: 'u',
+                        cond: { $eq: ['$$u._id', '$$h.lguId'] }
+                      }
+                    },
+                    0
+                  ]
+                },
+                timestamp: '$$h.timestamp',
+                comments: '$$h.comments'
+              }
+            }
+          }
+        }
+      }
+    ];
 
-    const histories = await StatusHistory.find({ updatedBy: lguName })
-      .select('documentId')
-      .lean();
-
-    const documentIds = [...new Set(histories.map(h => h.documentId))]
-      .filter(id => mongoose.Types.ObjectId.isValid(id))
-      .map(id => new mongoose.Types.ObjectId(id));
-
-    if (documentIds.length === 0) {
-      res.status(200).json([]);
-      return;
-    }
-
-    const documents = await ResponseCitizen.find({ 
-      _id: { $in: documentIds },
-      status: { $ne: 'pending' }
-    }).select('-__v -history');
-
-    res.status(200).json(documents);
-  } catch (error : any) {
-    console.error('Error details:', {
-      error,
-      query: req.query,
-      stack: error.stack
+    const documents = await ResponseCitizen.aggregate(aggregationPipeline)
+    .allowDiskUse(true)
+    .catch(error => {
+      console.error('Aggregation error:', error);
+      throw error;
     });
-    res.status(500).json({ 
-      message: 'Error fetching LGU documents',
-      error: error.message
-    });
-  }
-};
 
-export const getDocumentStatusHistory = async (req: Request, res: Response) => {
-  try {
-    const history = await StatusHistory.find({ documentId: req.query.formId })
-      .select('-__v')
-      .sort({ timestamp: -1 })
-      .lean();
-    res.status(200).json(history);
+    const processedDocuments = documents.map(doc => ({
+      ...doc,
+      citizenName: `${doc.citizen.firstName} ${doc.citizen.lastName}`,
+      history: doc.history.map((h: any) => ({
+        status: h.status,
+        updatedBy: h.updatedBy ?
+          `${h.updatedBy.firstName} ${h.updatedBy.lastName}` : 'System',
+        timestamp: h.timestamp,
+        comments: h.comments
+      }))
+    }));
+
+    res.status(200).json({ documents: processedDocuments });
+
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching status history', error });
+    console.error('Error fetching LGU processed documents:', error);
+    res.status(500).json({ message: 'Server error while processing documents' });
   }
-};
+}
+
+
+export const getDocumentStatusHistory = async (req: Request, res: Response, next : NextFunction) : Promise<void> => {
+  try {
+    const { documentId } = req.query
+    
+    if (!documentId) {
+      res.status(400).json({ message: 'Document ID is required' })
+      return;
+    }
+    
+    if (!mongoose.isValidObjectId(documentId)) {
+       res.status(400).json({ message: 'Invalid Document ID format' })
+       return;
+    }
+
+    const history = await StatusHistory.find({ documentId })
+      .sort({ timestamp: -1 })
+      .populate('lguId', 'firstName lastName -_id')
+
+    const formattedHistory = history.map(record => ({
+      status: record.newStatus,
+      updatedBy: record.lguId && typeof record.lguId !== 'string' && 'firstName' in record.lguId && 'lastName' in record.lguId
+        ? `${record.lguId.firstName} ${record.lguId.lastName}`
+        : 'System',
+      timestamp: record.timestamp,
+      previousStatus: record.previousStatus,
+      documentName: record.documentName,
+      referenceNumber: record.referenceNumber
+    }))
+
+    res.status(200).json(formattedHistory)
+
+  } catch (error) {
+    console.error('Error fetching document history:', error)
+    res.status(500).json({ message: 'Server error while fetching document history' })
+  }
+}

@@ -4,59 +4,21 @@ import Appointment from '../models/Appointment';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { title, date, time, user, ...rest } = req.body;
+    const { title, date,  user, ...rest } = req.body;
 
     if (!user) {
       res.status(400).json({ error: 'User ID is required' });
       return;
     }
 
-    const timeRegex = /^(0[8-9]|1[0-6]):00$/; // 08:00 to 16:00
-    if (!timeRegex.test(time)) {
-      res.status(400).json({ error: 'Invalid time. Please select a whole hour between 8:00 AM and 4:00 PM.' });
-      return;
-    }
 
     const appointmentDate = new Date(date);
-    const [hours] = time.split(':').map(Number);
-    appointmentDate.setHours(hours, 0, 0, 0);
 
-    const existingExact = await Appointment.findOne({
-      date: appointmentDate.toISOString().split('T')[0],
-      time: time
-    });
-
-    if (existingExact) {
-      res.status(400).json({ error: 'This time slot is already booked. Please choose another time.' });
-      return;
-    }
-
-    const oneHourBefore = new Date(appointmentDate);
-    oneHourBefore.setHours(hours - 1);
-    
-    const oneHourAfter = new Date(appointmentDate);
-    oneHourAfter.setHours(hours + 1);
-
-    const pad = (num: number) => num.toString().padStart(2, '0');
-
-    const existingWindow = await Appointment.findOne({
-      date: appointmentDate.toISOString().split('T')[0],
-      time: {
-        $gte: `${pad(oneHourBefore.getHours())}:00`,
-        $lte: `${pad(oneHourAfter.getHours())}:00`
-      }
-    });
-
-    if (existingWindow) {
-      res.status(400).json({ error: 'Another appointment is within 1 hour of this slot. Please choose another time.' });
-      return;
-    }
 
     const appointment = new Appointment({
       title,
       ...rest,
       date: appointmentDate,
-      time,
       user,
       status: 'pending'
     });
@@ -89,19 +51,46 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
   }
 };
 
-export const updateAppointmentStatus = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
+export const updateAppointmentStatus = async (req: Request, res: Response) : Promise<void> => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, time } = req.body;
 
     if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
-       res.status(400).json({ error: 'Invalid status' });
-       return;
+      res.status(400).json({ error: 'Invalid status' });
+      return;
     }
+
+    if (status === 'confirmed' && !time) {
+      res.status(400).json({ error: 'Time is required for confirmation' });
+      return;
+    }
+
+    // Time validation for confirmed appointments
+    if (status === 'confirmed') {
+      const timeRegex = /^(0[8-9]|1[0-6]):00$/;
+      if (!timeRegex.test(time)) {
+        res.status(400).json({ error: 'Invalid time. Use whole hours between 08:00-16:00' });
+        return;
+      }
+
+      const existingAppointment = await Appointment.findOne({
+        date: req.body.date,
+        time,
+        _id: { $ne: id }
+      });
+
+      if (existingAppointment) {
+        res.status(400).json({ error: 'Time slot already booked' });
+        return;
+      }
+    }
+
+    const updateData = { status, ...(status === 'confirmed' && { time }) };
 
     const appointment = await Appointment.findByIdAndUpdate(
       id,
-      { status },
+      updateData,
       { new: true, runValidators: true }
     ).populate('user', 'name email');
 
