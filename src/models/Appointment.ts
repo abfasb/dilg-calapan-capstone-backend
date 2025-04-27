@@ -14,7 +14,7 @@ _id: string;
 const appointmentSchema = new Schema({
   title: { type: String, required: true },
   date: { type: Date, required: true },
-  time: { type: String, required: true },
+  time: { type: String, required: false },
   description: String,
   status: {
     type: String,
