@@ -1,6 +1,7 @@
 // appointments.controller.ts
 import { NextFunction, Request, Response } from 'express';
-import Appointment from '../models/Appointment';
+import Appointment, { IAppointment} from '../models/Appointment';
+import { Types } from 'mongoose';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -66,7 +67,6 @@ export const updateAppointmentStatus = async (req: Request, res: Response) : Pro
       return;
     }
 
-    // Time validation for confirmed appointments
     if (status === 'confirmed') {
       const timeRegex = /^(0[8-9]|1[0-6]):00$/;
       if (!timeRegex.test(time)) {
@@ -124,5 +124,25 @@ export const getAllAppointmentsByLGU = async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const getCitizenAppointments = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
+  try {
+    const { userId } = req.query;
+    
+    if (!userId) {
+      res.status(400).json({ message: 'User ID is required' });
+      return;
+    }
+
+    const appointments = await Appointment.find({ user: userId })
+      .sort({ date: 1 })
+      .exec();
+
+    res.status(200).json(appointments);
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
