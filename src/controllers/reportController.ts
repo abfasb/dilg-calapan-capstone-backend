@@ -6,6 +6,33 @@ import bucket from '../config/firebaseConfig';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 
+import { Types } from 'mongoose';
+
+interface PopulatedHistoryItem {
+  status: string;
+  lguId: {
+    _id: Types.ObjectId;
+    firstName: string;
+    lastName: string;
+  } | null;
+  timestamp: Date;
+  comments: string;
+}
+
+interface PopulatedDocument {
+  referenceNumber: string;
+  status: string;
+  userId: {
+    _id: Types.ObjectId;
+    firstName: string;
+    lastName: string;
+  };
+  createdAt: Date;
+  comments: string;
+  history: PopulatedHistoryItem[];
+}
+
+
 export const createReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { title, description, fields } = req.body;
@@ -198,10 +225,9 @@ export const getUserDocuments = async (req : Request, res : Response, next: Next
 };
 
 
-export const getLGUProcessedDocuments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const getLGUProcessedDocuments = async (req: Request, res: Response) => {
   try {
     const { status, lguId } = req.query;
-
     const filter: any = {};
 
     if (status && ['pending', 'approved', 'rejected'].includes(status as string)) {
@@ -209,88 +235,36 @@ export const getLGUProcessedDocuments = async (req: Request, res: Response, next
     }
 
     if (lguId && mongoose.isValidObjectId(lguId)) {
-      filter['history.lguId'] = new mongoose.Types.ObjectId(lguId as string);
+      filter['history.lguId'] = lguId;
     }
-    
-    const aggregationPipeline = [
-      { $match: filter },
-      {
-        $lookup: {
-          from: 'Users',
-          localField: 'userId',
-          foreignField: '_id',
-          as: 'citizen'
-        }
-      },
-      { $unwind: '$citizen' },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'history.lguId',
-          foreignField: '_id',
-          as: 'lguUsers'
-        }
-      },
-      {
-        $project: {
-          referenceNumber: 1,
-          status: 1,
-          'citizen.firstName': 1,
-          'citizen.lastName': 1,
-          submittedDate: '$createdAt',
-          processedDate: { $max: '$history.timestamp' },
-          comments: 1,
-          history: {
-            $map: {
-              input: '$history',
-              as: 'h',
-              in: {
-                status: '$$h.status',
-                updatedBy: {
-                  $arrayElemAt: [
-                    {
-                      $filter: {
-                        input: '$lguUsers',
-                        as: 'u',
-                        cond: { $eq: ['$$u._id', '$$h.lguId'] }
-                      }
-                    },
-                    0
-                  ]
-                },
-                timestamp: '$$h.timestamp',
-                comments: '$$h.comments'
-              }
-            }
-          }
-        }
-      }
-    ];
 
-    const documents = await ResponseCitizen.aggregate(aggregationPipeline)
-    .allowDiskUse(true)
-    .catch(error => {
-      console.error('Aggregation error:', error);
-      throw error;
-    });
+    const documents = await ResponseCitizen.find(filter)
+  .populate('userId', 'firstName lastName')
+  .populate('history.lguId', 'firstName lastName')
+  .lean<PopulatedDocument[]>();
+
 
     const processedDocuments = documents.map(doc => ({
-      ...doc,
-      citizenName: `${doc.citizen.firstName} ${doc.citizen.lastName}`,
-      history: doc.history.map((h: any) => ({
+      referenceNumber: doc.referenceNumber,
+      status: doc.status,
+      citizenName: `${doc.userId.firstName} ${doc.userId.lastName}`,
+      submittedDate: doc.createdAt,
+      processedDate: doc.history.reduce((latest, h) => 
+        h.timestamp > latest ? h.timestamp : latest, new Date(0)),
+      comments: doc.comments,
+      history: doc.history.map(h => ({
         status: h.status,
-        updatedBy: h.updatedBy ?
-          `${h.updatedBy.firstName} ${h.updatedBy.lastName}` : 'System',
+        updatedBy: h.lguId ? 
+          `${h.lguId.firstName} ${h.lguId.lastName}` : 'System',
         timestamp: h.timestamp,
         comments: h.comments
       }))
     }));
 
     res.status(200).json({ documents: processedDocuments });
-
   } catch (error) {
-    console.error('Error fetching LGU processed documents:', error);
-    res.status(500).json({ message: 'Server error while processing documents' });
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Server error' });
   }
 }
 
