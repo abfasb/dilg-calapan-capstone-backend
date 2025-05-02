@@ -1,6 +1,5 @@
-// server/src/services/socket.ts
 import { Server } from 'socket.io';
-import Conversation from '../models/conversation';
+import Conversation from '../models/Conversation';
 
 export const initSocket = (server: any) => {
   const io = new Server(server, {
@@ -10,7 +9,7 @@ export const initSocket = (server: any) => {
     }
   });
 
-  io.on('connection', (socket) => {
+  io.on('connection', (socket : any) => {
     console.log('Client connected:', socket.id);
 
     socket.on('join_conversation', async (conversationId: string) => {
@@ -18,7 +17,7 @@ export const initSocket = (server: any) => {
       await Conversation.findByIdAndUpdate(conversationId, { status: 'open' });
     });
 
-    socket.on('send_message', async (data) => {
+    socket.on('send_message', async (data : any) => {
       const conversation = await Conversation.findById(data.conversationId);
       if (conversation) {
         conversation.messages.push({

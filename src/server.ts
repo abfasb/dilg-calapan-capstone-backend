@@ -1,3 +1,7 @@
+import { Server } from 'socket.io';
+import { createServer } from 'http';
+
+
 import AuthRoutes from './routes/AuthRoutes';
 import UserRoutes from './routes/UserRoutes';
 import ReportRoutes from './routes/ReportRoutes';
@@ -27,6 +31,13 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
 const corsOptions = {
   origin: 'http://localhost:5173', 
@@ -111,8 +122,82 @@ app.use('/api/staff', StaffRoutes)
   );
 
 
+  //Socket ito
+interface ChatMessage {
+  userId: string;
+  message: string;
+  sender: 'user' | 'admin';
+  timestamp: Date;
+}
 
-app.listen(port, () => {
+const activeAdmins = new Set<string>();
+const humanRequests = new Map<string, ChatMessage[]>();
+
+io.on('connection', (socket) => {
+  console.log('New connection:', socket.id);
+
+  socket.on('ping', (cb) => cb());
+
+  socket.on('register_user', (userId: string) => {
+    socket.join(userId);
+    console.log(`User ${userId} registered in room ${userId}`);
+  });
+
+  socket.on('admin_connect', () => {
+    activeAdmins.add(socket.id);
+    console.log('Admin connected:', socket.id);
+    socket.emit('pending_requests', Array.from(humanRequests.keys()));
+  });
+
+  socket.on('request_human', (userId: string) => {
+    console.log('Human support requested by:', userId);
+    if (!humanRequests.has(userId)) {
+      humanRequests.set(userId, []);
+      io.emit('new_request', userId);
+    }
+  });
+
+  socket.on('admin_join', (userId: string) => {
+    console.log('Admin joining chat with user:', userId);
+    socket.join(userId);
+    const history = humanRequests.get(userId) || [];
+    socket.emit('chat_history', history);
+  });
+
+  socket.on('send_message', (msg: ChatMessage) => {
+    console.log('Message received:', msg);
+    
+    const history = humanRequests.get(msg.userId) || [];
+    history.push(msg);
+    humanRequests.set(msg.userId, history);
+
+    if (msg.sender === 'admin') {
+      io.to(msg.userId).emit('receive_message', msg);
+    } else {
+      io.to(msg.userId).emit('user_message', msg);
+    }
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', () => {
+    activeAdmins.delete(socket.id);
+    console.log('Disconnected:', socket.id);
+  });
+});
+
+io.engine.on("initial_headers", (headers) => {
+  headers["Access-Control-Allow-Origin"] = "http://localhost:5173";
+  headers["Access-Control-Allow-Credentials"] = "true";
+});
+
+io.engine.on("headers", (headers) => {
+  headers["Access-Control-Allow-Origin"] = "http://localhost:5173";
+  headers["Access-Control-Allow-Credentials"] = "true";
+});
+
+
+
+server.listen(port, () => {
   console.log('Server is running at port ' + port);
 });
 
