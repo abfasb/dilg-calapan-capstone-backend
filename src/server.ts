@@ -153,32 +153,30 @@ io.on('connection', (socket) => {
     console.log('Human support requested by:', userId);
     if (!humanRequests.has(userId)) {
       humanRequests.set(userId, []);
-      io.emit('new_request', userId);
+      for (const adminId of activeAdmins) {
+        io.to(adminId).emit('new_request', userId);
+      }
     }
   });
 
   socket.on('admin_join', (userId: string) => {
-    console.log('Admin joining chat with user:', userId);
+    console.log(`Admin ${socket.id} joining chat with user: ${userId}`);
     socket.join(userId);
     const history = humanRequests.get(userId) || [];
     socket.emit('chat_history', history);
   });
 
   socket.on('send_message', (msg: ChatMessage) => {
-    console.log('Message received:', msg);
+    console.log('Message received:', msg, 'from', socket.id);
     
     const history = humanRequests.get(msg.userId) || [];
     history.push(msg);
     humanRequests.set(msg.userId, history);
 
-    if (msg.sender === 'admin') {
-      io.to(msg.userId).emit('receive_message', msg);
-    } else {
-      io.to(msg.userId).emit('user_message', msg);
-    }
+    console.log(`Broadcasting message to room ${msg.userId}`);
+    io.in(msg.userId).emit(msg.sender === 'admin' ? 'receive_message' : 'user_message', msg);
   });
 
-  // Handle disconnection
   socket.on('disconnect', () => {
     activeAdmins.delete(socket.id);
     console.log('Disconnected:', socket.id);
