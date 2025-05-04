@@ -1,5 +1,5 @@
   import Express, { NextFunction, Request, Response } from 'express';
-  import { createReport, getReportForms, getUserReports, updateReportForms, getUserReportsAndTracking, getSubmissionController} from '../controllers/reportController';
+  import { createReport, getReportForms, getUserReports, updateReportForms, getUserReportsAndTracking, getSubmissionController, getCitizenCases} from '../controllers/reportController';
   import ReportForms from '../models/ReportForm';
   import ResponseCitizen from '../models/ResponseCitizen';
   import multer from 'multer';
@@ -67,7 +67,7 @@
 router.get('/get-report', getReportForms);
 router.put('/update-report/:id', updateReportForms);
 
-
+router.get('/cases', getCitizenCases);
  
 router.get('/:id', async (req : Request, res : Response, next: NextFunction) : Promise<void>=> {
   try {

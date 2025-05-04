@@ -295,35 +295,22 @@ export const getLGUUsers = async (req : Request, res : Response, next: NextFunct
     }
   };
 
-  export const updateProfile = async (req: Request, res: Response) : Promise<void>=> {
+  
+  export const updateProfile = async (req: Request, res: Response): Promise<void> => {
     try {
-      if (!req.user) {
-         res.status(401).json({ message: 'Unauthorized: User not authenticated' });
-         return
-      }
-      const userId = (req.user as any)._id;
+      const { id } = req.params;
       const { firstName, lastName, phoneNumber, email } = req.body;
   
-      const user = await User.findById(userId);
-      if (!user) {
+      const updatedUser = await User.findByIdAndUpdate(
+        id, 
+        { firstName, lastName, phoneNumber, email },
+        { new: true, runValidators: true }
+      ).select('-password -resetToken -resetTokenExpiry');
+  
+      if (!updatedUser) {
         res.status(404).json({ message: 'User not found' });
         return;
       }
-  
-      if (email !== user.email) {
-        res.status(400).json({ message: 'Email cannot be changed' });
-        return;
-      }
-  
-      const updatedUser = await User.findByIdAndUpdate(
-        userId,
-        {
-          firstName,
-          lastName,
-          phoneNumber
-        },
-        { new: true, runValidators: true }
-      ).select('-password -resetToken -resetTokenExpiry');
   
       res.status(200).json(updatedUser);
     } catch (error) {
