@@ -224,6 +224,51 @@ export const getUserDocuments = async (req : Request, res : Response, next: Next
   }
 };
 
+export const getCitizenCases = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
+  try {
+    const userId = req.query.userId as string;
+    const statusParam = req.query.status;
+    const statusFilter = typeof statusParam === 'string' 
+    ? statusParam.split(',') 
+    : Array.isArray(statusParam)
+    ? statusParam
+    : [];
+
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const query: any = { userId };
+    if (statusFilter.length > 0) {
+      query.status = { $in: statusFilter };
+    }
+
+    const [cases, total] = await Promise.all([
+      ResponseCitizen.find(query)
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 })
+        .lean(),
+      ResponseCitizen.countDocuments(query)
+    ]);
+
+    res.json({
+      cases: cases.map(citizenCase => ({
+        ...citizenCase,
+        status: citizenCase.status || 'pending',
+        lastUpdate: citizenCase.history?.length > 0 
+          ? citizenCase.history[citizenCase.history.length - 1].timestamp 
+          : citizenCase.createdAt
+      })),
+      totalPages: Math.ceil(total / limit),
+      currentPage: page
+    });
+
+  } catch (error) {
+    console.error('Error fetching cases:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
 
 export const getLGUProcessedDocuments = async (req: Request, res: Response) => {
   try {
