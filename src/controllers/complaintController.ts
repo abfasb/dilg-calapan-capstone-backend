@@ -75,3 +75,46 @@ export const updateComplaintStatus = async (req: Request, res: Response) : Promi
     res.status(500).json({ message: 'Error updating complaint status', error });
   }
 };
+
+
+export const getCitizenComplaints = async (req: Request, res: Response) : Promise<void> => {
+  try {
+    const complaints = await Complaint.find({ 
+      userId: req.params.userId 
+    }).sort({ createdAt: -1 });
+
+    const sanitizedComplaints = complaints.map(complaint => ({
+      ...complaint.toObject(),
+      name: complaint.anonymous ? 'Anonymous' : complaint.name
+    }));
+
+    res.json(sanitizedComplaints);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching complaints' });
+  }
+};
+
+export const getComplaintDetails = async (req: Request, res: Response) : Promise<void> => {
+  try {
+    const user = req.user as { _id: string };
+    const complaint = await Complaint.findOne({
+      _id: req.params.id,
+      userId: user._id
+    });
+
+    if (!complaint) {
+     res.status(404).json({ message: 'Complaint not found' });
+     return;
+    }
+
+    const response = {
+      ...complaint.toObject(),
+      name: complaint.anonymous ? 'Anonymous' : complaint.name,
+      userId: undefined
+    };
+
+    res.json(response);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching complaint details' });
+  }
+};
