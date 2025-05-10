@@ -1,5 +1,5 @@
 import express from 'express';
-import { createComplaint, getAllComplaintsForAdmin, getCitizenComplaints, getComplaintDetails, getComplaints, updateComplaintStatus } from '../controllers/complaintController';
+import { createComplaint, getAllComplaintsForAdmin, getCitizenComplaints, getComplaintById, getComplaints, updateComplaintStatus } from '../controllers/complaintController';
 import auth from '../middleware/auth';
 
 const router = express.Router();
@@ -11,7 +11,7 @@ router.get('/complaint-admin', getAllComplaintsForAdmin);
 router.patch('/complaint-admin/:id/status', updateComplaintStatus);
 
 router.get('/complaint-citizen/', getCitizenComplaints);
-router.get('/complaint-citizen/details', getComplaintDetails);
+router.get('/complaint-citizen/:id', getComplaintById);
 
 
 export default router;

@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import Complaint, { IComplaint } from '../models/Complaint';
 import mongoose from 'mongoose';
 
@@ -116,5 +116,26 @@ export const getComplaintDetails = async (req: Request, res: Response) : Promise
     res.json(response);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching complaint details' });
+  }
+};
+
+export const getComplaintById = async (req : Request, res : Response, next: NextFunction) : Promise<void> => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+       res.status(400).json({ message: 'Invalid complaint ID' });
+       return;
+    }
+
+    const complaint = await Complaint.findById(req.params.id).lean();
+
+    if (!complaint) {
+       res.status(404).json({ message: 'Complaint not found' });
+       return;
+    }
+
+    res.status(200).json(complaint);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
   }
 };
