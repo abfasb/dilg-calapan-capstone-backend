@@ -1,6 +1,7 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import User from '../models/User';
 import ResponseCitizen from '../models/ResponseCitizen';
+import StatusHistory from '../models/StatusHistory';
 
 export const getStaff = async (req: Request, res: Response) : Promise<void> => {
   try {
@@ -23,119 +24,74 @@ export const getStaff = async (req: Request, res: Response) : Promise<void> => {
   }
 };
 
-
-export const getApprovalRates = async (req: Request, res: Response) : Promise<void> => {
+export const getApprovalRates = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const approvalStats = await ResponseCitizen.aggregate([
-      { $unwind: "$history" },
-      { $match: { "history.newStatus": { $in: ["approved", "rejected"] } } },
+    const aggregatedData = await StatusHistory.aggregate([
       {
-        $group: {
-          _id: {
-            lguId: "$history.lguId",
-            status: "$history.newStatus"
-          },
-          count: { $sum: 1 }
+        $match: {
+          newStatus: { $in: ['approved', 'rejected'] },
+          lguId: { $ne: null }
         }
       },
       {
         $group: {
-          _id: "$_id.lguId",
-          approved: {
+          _id: '$lguId',
+          totalHandled: { $sum: 1 },
+          approvedHandled: {
             $sum: {
-              $cond: { if: { $eq: ["$_id.status", "approved"] }, then: "$count", else: 0 }
-            }
-          },
-          rejected: {
-            $sum: {
-              $cond: { if: { $eq: ["$_id.status", "rejected"] }, then: "$count", else: 0 }
+              $cond: [{ $eq: ['$newStatus', 'approved'] }, 1, 0]
             }
           }
         }
-      },
-      {
-        $lookup: {
-          from: "users",
-          localField: "_id",
-          foreignField: "_id",
-          as: "lgu"
-        }
-      },
-      { $unwind: "$lgu" },
-      {
-        $project: {
-          lguId: "$_id",
-          lguName: { $concat: ["$lgu.firstName", " ", "$lgu.lastName"] },
-          barangay: "$lgu.barangay",
-          approved: 1,
-          rejected: 1,
-          total: { $add: ["$approved", "$rejected"] },
-          approvalRate: {
-            $cond: {
-              if: { $eq: [{ $add: ["$approved", "$rejected"] }, 0] },
-              then: 0,
-              else: {
-                $multiply: [
-                  { $divide: ["$approved", { $add: ["$approved", "$rejected"] }] },
-                  100
-                ]
-              }
-            }
-          }
-        }
-      },
-      { $sort: { approvalRate: -1 } }
+      }
     ]);
 
-    res.json(approvalStats);
-  } catch (error : any) {
-    res.status(500).json({ message: error.message });
+    const lguUsers = await User.find({ role: 'lgu' }).lean();
+
+    const statsMap = new Map<string, { totalHandled: number; approvedHandled: number }>();
+    aggregatedData.forEach(stat => {
+      statsMap.set(stat._id.toString(), {
+        totalHandled: stat.totalHandled,
+        approvedHandled: stat.approvedHandled 
+      });
+    });
+
+    const response = lguUsers.map(lgu => {
+      const lguIdStr = lgu._id.toString();
+      const stats = statsMap.get(lguIdStr) || { totalHandled: 0, approvedHandled: 0 };
+      
+      const approvalRate = stats.totalHandled === 0 
+      ? 0 
+      : Number(((stats.approvedHandled / stats.totalHandled) * 100).toFixed(2));
+
+
+      return {
+        lguId: lguIdStr,
+        lguName: `${lgu.firstName} ${lgu.lastName}`,
+        approved: stats.approvedHandled,
+        rejected: stats.totalHandled - stats.approvedHandled, 
+        approvalRate: approvalRate
+      };
+    });
+
+    res.status(200).json({ success: true, data: response });
+  } catch (err) {
+    console.error('Error in getApprovalRates:', err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-export const getApprovedCitizens = async (req: Request, res: Response) => {
-  try {
-    const approvedSubmissions = await ResponseCitizen.aggregate([
-      { $unwind: "$history" },
-      { $match: { "history.newStatus": "approved" } },
-      {
-        $lookup: {
-          from: "users",
-          localField: "userId",
-          foreignField: "_id",
-          as: "citizen"
-        }
-      },
-      { $unwind: "$citizen" },
-      {
-        $lookup: {
-          from: "users",
-          localField: "history.lguId",
-          foreignField: "_id",
-          as: "lgu"
-        }
-      },
-      { $unwind: "$lgu" },
-      {
-        $project: {
-          referenceNumber: 1,
-          createdAt: 1,
-          citizen: {
-            name: { $concat: ["$citizen.firstName", " ", "$citizen.lastName"] },
-            email: "$citizen.email"
-          },
-          lgu: {
-            name: { $concat: ["$lgu.firstName", " ", "$lgu.lastName"] },
-            barangay: "$lgu.barangay"
-          },
-          approvedAt: "$history.timestamp"
-        }
-      },
-      { $sort: { approvedAt: -1 } }
-    ]);
 
-    res.json(approvedSubmissions);
-  } catch (error : any) {
-    res.status(500).json({ message: error.message });
+export const getApprovedCitizens = async (req: Request, res: Response, next : NextFunction): Promise<void> => {
+  try {
+    const approvedSubmissions = await ResponseCitizen.find({ status: 'approved' })
+      .populate('userId', 'firstName lastName email barangay') 
+      .populate('formId', 'title') 
+      .populate('history.lguId', 'firstName lastName');
+
+    res.status(200).json({ success: true, data: approvedSubmissions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
