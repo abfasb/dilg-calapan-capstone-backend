@@ -65,6 +65,16 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
         signedAt: new Date(),
       };
     }
+    
+    const lguIdRaw = req.body.lgu?.id;
+    let lguId: mongoose.Types.ObjectId | null = null;
+
+    if (mongoose.Types.ObjectId.isValid(lguIdRaw)) {
+      lguId = new mongoose.Types.ObjectId(lguIdRaw);
+    } else {
+      console.warn('Invalid LGU ID:', lguIdRaw);
+      lguId = null;
+    }
 
     const globalHistoryEntry = new StatusHistory({
       documentId: response._id,
@@ -73,15 +83,13 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
       previousStatus: response.status,
       newStatus: status,
       updatedBy,
-      lguId: new mongoose.Types.ObjectId(req.body.lgu?.id), 
+      lguId,
       lguName: req.body.lgu?.name,
       formId: response.formId,
     });
 
 
-    const lguId = req.body.lgu?.id 
-      ? new mongoose.Types.ObjectId(req.body.lgu.id) 
-      : null;
+
     const lguName = req.body.lgu?.name;
 
     response.history.push({
