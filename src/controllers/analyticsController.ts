@@ -7,6 +7,7 @@ import ResponseCitizen from '../models/ResponseCitizen';
 import Complaint from '../models/Complaint';
 import Event from '../models/Event';
 import Appointment from '../models/Appointment';
+import moment from 'moment';
 
 export const getUserStats = async (req : Request, res : Response) => {
   try {
@@ -412,7 +413,6 @@ interface BarangayActivity {
   lastActivity: Date;
 }
 
-
 export const getBarangayActivity = async (req: Request, res: Response) => {
   try {
     const activityData = await ResponseCitizen.aggregate([
@@ -440,12 +440,33 @@ export const getBarangayActivity = async (req: Request, res: Response) => {
           lastActivity: 1,
         },
       },
-      { $sort: { submissionCount: 1 } }, 
+      { $sort: { submissionCount: -1 } }, // Changed to descending order
     ]);
 
-    res.status(200).json(activityData);
+    // Calculate summary statistics
+    const totalSubmissions = activityData.reduce((sum, curr) => sum + curr.submissionCount, 0);
+    const mostActive = activityData[0];
+    const leastActive = activityData[activityData.length - 1];
+
+    res.status(200).json({
+      summary: {
+        totalBarangays: activityData.length,
+        totalSubmissions,
+        mostActive,
+        leastActive
+      },
+      details: activityData
+    });
   } catch (error) {
     console.error('Error fetching barangay activity:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+// Helper function to determine activity level
+function getActivityLevel(submissionCount: number): string {
+  if (submissionCount === 0) return 'Inactive';
+  if (submissionCount <= 5) return 'Low Activity';
+  if (submissionCount <= 15) return 'Moderate';
+  return 'Highly Active';
+}
