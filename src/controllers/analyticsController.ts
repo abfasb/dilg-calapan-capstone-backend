@@ -405,3 +405,47 @@ export const getReportTrends = async (req : Request, res : Response, next : Next
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+interface BarangayActivity {
+  barangay: string;
+  submissionCount: number;
+  lastActivity: Date;
+}
+
+
+export const getBarangayActivity = async (req: Request, res: Response) => {
+  try {
+    const activityData = await ResponseCitizen.aggregate([
+      {
+        $lookup: {
+          from: User.collection.name,
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user',
+        },
+      },
+      { $unwind: '$user' },
+      {
+        $group: {
+          _id: '$user.barangay',
+          submissionCount: { $sum: 1 },
+          lastActivity: { $max: '$createdAt' },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          barangay: '$_id',
+          submissionCount: 1,
+          lastActivity: 1,
+        },
+      },
+      { $sort: { submissionCount: 1 } }, 
+    ]);
+
+    res.status(200).json(activityData);
+  } catch (error) {
+    console.error('Error fetching barangay activity:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
