@@ -10,7 +10,8 @@ import {
   getTrendData,
   getRecentActivities,
   getDashboardStats,
-  getReportTrends
+  getReportTrends,
+  getBarangayActivity
 } from '../controllers/analyticsController';
 
 const router = express.Router();
@@ -29,6 +30,9 @@ router.get('/activities', getRecentActivities);
 
 router.get('/dashboard-stats', getDashboardStats);
 router.get('/report-trends', getReportTrends);
+
+
+router.get('/barangay-activity', getBarangayActivity);
 
 
 export default router;
