@@ -316,7 +316,7 @@ interface MonthlySubmission {
 export const getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Real-time data aggregations
-    const [submissions, complaints, events, forms] = await Promise.all([
+    const [submissions, complaints, events, forms, activeUsers, peakActivityDays] = await Promise.all([
       ResponseCitizen.aggregate([
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]) as Promise<StatusCount[]>,
@@ -326,10 +326,70 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       Event.aggregate([
         { $group: { _id: '$status', count: { $sum: 1 } } }
       ]) as Promise<StatusCount[]>,
+      // Total forms count (modified)
       ReportForm.aggregate([
-        { $unwind: '$responses' },
-        { $group: { _id: null, count: { $sum: 1 } } }
-      ]) as Promise<{ _id: null; count: number }[]>
+        { $count: "count" }
+      ]) as Promise<{ count: number }[]>,
+      // Active users (last 30 days)
+      User.aggregate([
+        {
+          $match: {
+            lastActivity: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
+          }
+        },
+        { $count: "count" }
+      ]) as Promise<{ count: number }[]>,
+      // Peak activity by day of week
+      ResponseCitizen.aggregate([
+        {
+          $group: {
+            _id: { $dayOfWeek: "$createdAt" },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { count: -1 } }
+      ])
+    ]);
+
+    // Department performance (top 3 barangays)
+    const departmentPerformance = await ResponseCitizen.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+      { $unwind: "$user" },
+      {
+        $group: {
+          _id: "$user.barangay",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 3 }
+    ]);
+
+    // All barangays for view all
+    const allBarangays = await ResponseCitizen.aggregate([
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user"
+        }
+      },
+      { $unwind: "$user" },
+      {
+        $group: {
+          _id: "$user.barangay",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
     ]);
 
     const monthlySubmissions = await ResponseCitizen.aggregate([
@@ -350,7 +410,6 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       { $sort: { "_id": 1 } }
     ]);
 
-
     const submissionHistory = Array(12).fill(0);
     monthlySubmissions.forEach((month: MonthlySubmission) => {
       submissionHistory[month._id - 1] = month.count;
@@ -358,29 +417,60 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
 
     const submissionPrediction = predictNextPeriod(submissionHistory);
 
+    const totalSubmissions = submissions.reduce((acc, curr) => acc + curr.count, 0);
+    const peakActivity = Array(7).fill(0).map((_, i) => ({
+      day: new Date(0, 0, i).toLocaleDateString('en-US', { weekday: 'long' }),
+      percentage: 0
+    }));
+
+    peakActivityDays.forEach(day => {
+      const index = (day._id - 2 + 7) % 7; 
+      peakActivity[index].percentage = Math.round((day.count / totalSubmissions) * 100);
+    });
+
+    const totalBarangaySubmissions = allBarangays.reduce((sum, b) => sum + b.count, 0);
+    const overallPerformance = allBarangays.length > 0 
+      ? (totalBarangaySubmissions / allBarangays.length).toFixed(1)
+      : 0;
+
     const stats = {
       overview: {
-        totalSubmissions: submissions.reduce((acc: number, curr: StatusCount) => acc + curr.count, 0),
-        totalComplaints: complaints.reduce((acc: number, curr: StatusCount) => acc + curr.count, 0),
-        activeEvents: events.find((e: StatusCount) => e._id === 'published')?.count || 0,
-        totalForms: forms[0]?.count || 0
+        totalSubmissions: submissions.reduce((acc, curr) => acc + curr.count, 0),
+        totalComplaints: complaints.reduce((acc, curr) => acc + curr.count, 0),
+        activeEvents: events.find(e => e._id === 'published')?.count || 0,
+        totalForms: forms[0]?.count || 0,
+        activeUsers: activeUsers[0]?.count || 0
       },
       statusDistribution: {
-        submissions: submissions,
-        complaints: complaints,
-        events: events
+        submissions,
+        complaints,
+        events
       },
       predictions: {
         nextMonthSubmissions: submissionPrediction,
         resolutionRate: complaints.length > 0 
           ? (
-              (complaints.find((c: StatusCount) => c._id === 'Resolved')?.count || 0)
-              / complaints.reduce((a: number, c: StatusCount) => a + c.count, 0) * 100
+              (complaints.find(c => c._id === 'Resolved')?.count || 0) / 
+              complaints.reduce((a, c) => a + c.count, 0) * 100
             ).toFixed(1)
           : 0
       },
       trends: {
-        submissionHistory: submissionHistory
+        submissionHistory
+      },
+      peakActivity,
+      departmentPerformance: {
+        top3: departmentPerformance.map(dp => ({
+          barangay: dp._id,
+          count: dp.count,
+          percentage: Math.round((dp.count / totalBarangaySubmissions) * 100)
+        })),
+        allBarangays: allBarangays.map(b => ({
+          barangay: b._id,
+          count: b.count,
+          percentage: Math.round((b.count / totalBarangaySubmissions) * 100)
+        })),
+        overallPerformance
       }
     };
 
