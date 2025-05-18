@@ -2,6 +2,7 @@ import express from 'express';
 import admin from 'firebase-admin';
 import User from '../models/User';
 import GoogleUser from '../models/GoogleUser';
+import { getNotifications, markAsRead } from '../controllers/notificationController';
 
 const router = express.Router();
 
@@ -27,5 +28,10 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to send notification' });
   }
 });
+
+
+router.get('/admin', getNotifications);
+router.put('/mark-read', markAsRead);
+
 
 export default router;
