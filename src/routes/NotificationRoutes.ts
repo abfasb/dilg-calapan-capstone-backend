@@ -2,7 +2,7 @@ import express from 'express';
 import admin from 'firebase-admin';
 import User from '../models/User';
 import GoogleUser from '../models/GoogleUser';
-import { getNotifications, markAsRead } from '../controllers/notificationController';
+import { getNotifications, markAsRead, updateFCMToken } from '../controllers/notificationController';
 
 const router = express.Router();
 
@@ -32,6 +32,7 @@ router.post('/', async (req, res) => {
 
 router.get('/admin', getNotifications);
 router.put('/mark-read', markAsRead);
+router.put('/save-fcm-token', updateFCMToken);
 
 
 export default router;

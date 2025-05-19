@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "pharma-kiosk-ad218",
+  "private_key_id": "6050bada0629117d9dc26c7fd9fb41e15a686673",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCwLpECymtX66ic\nrMOILWozi2D4CatZJbi7cDrv2WOx2e0VceMtAIqAq3wh3j2j+7kX6l8NLnH5sTLJ\n9ZA5dvXJtnn03PSO0rr2FmvdmJeWJIpGCQpAy6MMggg2u3FsRYKJvNgAciKfCpiX\noGKoQ9O5TtMDq7ihtEapARRDlezXvU2JS3p+VfNT9bRscSoy6rhe2B8hvDwPr1bz\nooTK/SuMgf+c155ll9oF/fgSfuEVTjnWYflH5vYx0Xo1IpQp+qvWczXZuubhz2y+\nCh/sHhJAUEzhZe7T76zvVjr6PFwjKJ8vhLMMUcok7VI+CEeRFcjXggZM1zvXzx9H\nY2qjiG7dAgMBAAECggEABwXsMOzJx6j0wT4f00tgKurY9DpKctTOnuYz60DCuSHD\nUjIGiNI3MzbizWTTFzjfIYVtwZRC5d269RMNa0UDOkXEac7vDsx2uH2fUieVj14o\nhu8wUfHsL4D1e90QAe1pbT0ybR4fpDBjcdPqauO9SmtKfSB4zTVnBbCt0p3k4Zqw\nylik7gJhoZhEKmv0vpJm0kW8M+5jeZpgs8XvGai4O14q8uRONZ9DtZ9Qdg5LD0tZ\ni1YEjtul+idJGjY9q3umRBDB9dxsP01vFm4z12ArVf/Iqi1dpLqpms4mI/Mb/R2G\nnAakW48Jl8MG5CVPi83EhgCfP5cR7pk77mxofUZ7zwKBgQDf/W8tpo3yUTo8+CdM\nu3qXzzDSypDHJmR0e1pmI/CMWRFl+9qKngsbPJLNYaL1h3ydofn4uqkMwCf5PJH+\nJxBoyLwcXBvEevAGoepBoVmvfu0ZWM1tL4bVTHqN2uAMAIFJ3J5F6YucruW0YItq\nqPM9cU41cXPgxQuZ6wYp1ekRnwKBgQDJXBi7tDqwHzVj4wF7ntDarUpCOy89Dr1C\nMRQM27AUokbfyL9ubX/HLRKTQmYf0sOQegW6Zxp0nB1/2CUzNxBOi+AnsAyUPqE8\nFdMdfPx27MkYZOAOl5eAhpysedSNpr5KPu81Nm52F3UOlhT5aShXx+J1juAYbFwW\nz+kknOyGAwKBgBazZrsnsCco2FApjkIWlhwgoYAbi4TDfVbY0ZacedqfhEXjuohl\n8BY4k2BBTvS3YIfRTLZKpKtoJiT6YIlziBQ2k+oD48SL+RuS+Vzhb2d746e3+kng\nkTe44orR7fcJbhEATQIk40Nj7l/TkQ2kRdKqUxTThLz4+24EBcHjrhVdAoGBAJ+J\nlZsayCkFARM8J8+fXFD2XdCt/dZ9mBwasI0jfpZKoKbr8ih3H3da0c3VHP73ybTt\nyR4QVJixnHnPcmHqrcPd9WLcjIrkOHFXxWYmwg0jvIzUV+WX3BScEwRgnrUAuOIw\njOx3TPvJyBgfd0zJMYqjN1z3L7yKFkiIwGse3hOrAoGBANLYuRpb7zClhGJLcruR\njsOgajnd4VuzoeIGup1MOTe46a3mN9rspTBZ6eIMB6HTfVxLTFVEPaWMJGnibE0P\nwaGQ2/FCQAbNGLtJGnv9i8PVXaUw5zOWNVxg/jUvWFtDHOfunh8dU24K66KDAkqD\n5iVI03OFhAlXA0qXJE3+a/MZ\n-----END PRIVATE KEY-----\n",
+  "client_email": "firebase-adminsdk-cqbiu@pharma-kiosk-ad218.iam.gserviceaccount.com",
+  "client_id": "101543719975572074807",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/firebase-adminsdk-cqbiu%40pharma-kiosk-ad218.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

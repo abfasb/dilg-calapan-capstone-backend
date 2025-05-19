@@ -196,6 +196,7 @@ io.engine.on("headers", (headers) => {
 
 
 server.listen(port, () => {
+  console.log(process.env.GOOGLE_APPLICATION_CREDENTIALS);
   console.log('Server is running at port ' + port);
 });
 
