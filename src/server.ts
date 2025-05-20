@@ -18,6 +18,7 @@ import NotificationRoutes from './routes/NotificationRoutes';
 import AnalyticsAdminRoutes from './routes/AnalyticsAdminRoutes';
 import AuditLogsRoutes from './routes/AuditLogsRoutes';
 import StaffRoutes from './routes/lgu/StaffRoutes';
+import AIRoutes from './routes/AIRoutes';
 
 import ResponseRoutes from './routes/lgu/ResponseRoutes'
 
@@ -83,6 +84,7 @@ app.use('/api/response', ResponseRoutes);
 app.use('/api/notify', NotificationRoutes);
 app.use('/api/audit-logs', AuditLogsRoutes);
 app.use('/api/staff', StaffRoutes)
+app.use('/api/search', AIRoutes)
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
