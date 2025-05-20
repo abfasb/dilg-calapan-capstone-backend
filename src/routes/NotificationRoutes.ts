@@ -32,7 +32,7 @@ router.post('/', async (req, res) => {
 
 router.get('/admin', getNotifications);
 router.put('/mark-read', markAsRead);
-router.put('/save-fcm-token', updateFCMToken);
+router.patch('/save-fcm-token', updateFCMToken);
 
 
 export default router;

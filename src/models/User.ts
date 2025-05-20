@@ -54,6 +54,9 @@ const UserSchema : Schema = new Schema ({
         type: String, 
         required: true
     },
+    fcmToken: {
+        type: String,
+    },
     resetToken: {
         type: String
     },

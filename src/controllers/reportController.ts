@@ -2,7 +2,7 @@ import Express, { Request, Response, NextFunction} from 'express';
 import ReportForms from '../models/ReportForm'
 import ResponseCitizen from '../models/ResponseCitizen';
 import StatusHistory from '../models/StatusHistory';
-import bucket from '../config/firebaseConfig';
+import { bucket } from '../config/firebaseConfig';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
 
