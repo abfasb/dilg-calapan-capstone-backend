@@ -3,7 +3,7 @@
   import ReportForms from '../models/ReportForm';
   import ResponseCitizen from '../models/ResponseCitizen';
   import multer from 'multer';
-  import bucket from '../config/firebaseConfig';
+  import { bucket } from '../config/firebaseConfig';
   import { v4 as uuidv4 } from 'uuid';
   import _ from 'lodash';
 

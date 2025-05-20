@@ -1,10 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import ResponseCitizen from '../models/ResponseCitizen';
 import StatusHistory from '../models/StatusHistory';
-import bucket from '../config/firebaseConfig';
+import { bucket, messaging } from '../config/firebaseConfig';
 import { v4 as uuidv4 } from 'uuid';
 import _ from 'lodash';
 import mongoose from 'mongoose';
+import User from '../models/User';
 
 export const getResponsesByForm = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
   try {
@@ -107,6 +108,22 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
     if (signatureData) response.signature = signatureData;
 
     await Promise.all([globalHistoryEntry.save(), response.save()]);
+
+    const user = await User.findById(response.userId);
+
+    if (user?.fcmToken) {
+      await messaging.send({
+        token: user.fcmToken,
+        notification: {
+          title: `Your request has been ${status}`,
+          body: comments || 'Please check your submission for more details.'
+        },
+        data: {
+          referenceNumber: response.referenceNumber,
+          status,
+        }
+  });
+}
     res.json(response);
   } catch (error) {
     console.error(error);

@@ -1,6 +1,6 @@
 import Express, { Request, Response, NextFunction } from 'express';
 import BlogPost from '../models/landingpage/BlogPost';
-import bucket from '../config/firebaseConfig';
+import {bucket} from '../config/firebaseConfig';
 
 export const createBlog = async (req: Request, res: Response): Promise<void> => {
   try {
