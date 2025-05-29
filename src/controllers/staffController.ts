@@ -3,7 +3,7 @@ import User from '../models/User';
 import ResponseCitizen from '../models/ResponseCitizen';
 import StatusHistory from '../models/StatusHistory';
 
-export const getStaff = async (req: Request, res: Response) : Promise<void> => {
+export const getStaff = async (req: Request, res: Response): Promise<void> => {
   try {
     const staff = await User.find({ role: 'lgu' })
       .select('firstName lastName email role isActive position phoneNumber barangay lastActivity avatarUrl')
@@ -11,11 +11,16 @@ export const getStaff = async (req: Request, res: Response) : Promise<void> => {
       .lean();
 
     const now = new Date();
-    const staffWithStatus = staff.map(member => ({
-      ...member,
-      isActive: now.getTime() - new Date(member.lastActivity).getTime() < 5 * 60 * 1000,
-      lastActivity: member.lastActivity || member.updatedAt 
-    }));
+    const staffWithStatus = staff.map(member => {
+      const lastActivity = member.lastActivity || member.updatedAt;
+      const isActive = now.getTime() - new Date(lastActivity).getTime() < 5 * 60 * 1000;
+      
+      return {
+        ...member,
+        isActive,
+        lastActivity
+      };
+    });
 
     res.json(staffWithStatus);
   } catch (error) {

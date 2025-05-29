@@ -78,6 +78,8 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
       const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress)?.toString();
       const userAgent = req.headers['user-agent'] || 'Unknown device';
   
+      const dateToday = new Date();
+
       if (findUser.role === "Admin") {
         res.status(200).json({
           message: "Login Successfully",
@@ -94,13 +96,18 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
       }
   
       if (findUser.role === "lgu") {
+
+        await User.updateOne(
+          { _id: findUser._id },
+          { $set: { lastActivity: dateToday } }
+        );
         await AutditLogs.create({
           userId: findUser._id,
           email: findUser.email,
           role: findUser.role,
           action: 'Logged in as LGU',
           ipAddress,
-          userAgent
+          userAgent,
         });
   
         res.status(200).json({
@@ -111,7 +118,7 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
             id: findUser._id,
             email: findUser.email,
             role: findUser.role,
-            name: findUser.firstName + ' ' + findUser.lastName
+            name: findUser.firstName + ' ' + findUser.lastName,
           },
         });
         return;
