@@ -199,7 +199,6 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
       $unset: { comments: 1 }
     };
 
-    // Fetch existing response first
     const existingResponse = await ResponseCitizen.findById(req.params.id);
     if (!existingResponse) {
       res.status(404).json({ message: 'Response not found' });
