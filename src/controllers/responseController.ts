@@ -16,6 +16,7 @@ export const getResponsesByForm = async (req: Request, res: Response, next: Next
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 export const getResponseDetails = async (req: Request, res: Response): Promise<void> => {
   try {
     const response = await ResponseCitizen.findById(req.params.id)
@@ -193,7 +194,7 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
     const { submissionType } = req.body;
     const uploadedFiles = req.files as Express.Multer.File[];
     const updateData: any = {
-      status: 'pending',
+      status: 'rejected',
       updatedAt: new Date(),
       $unset: { comments: 1 }
     };
@@ -204,6 +205,11 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
       res.status(404).json({ message: 'Response not found' });
       return;
     }
+
+    if (existingResponse.status === "rejected") {
+      updateData.isUserUpdatedRejected = true;
+    }
+
 
     const processedFiles = [];
     if (uploadedFiles.length > 0) {
