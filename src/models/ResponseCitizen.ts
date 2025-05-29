@@ -22,7 +22,11 @@ const submissionSchema = new mongoose.Schema({
       default: "pending",
       comments: { type: String, required: false },
     },
-    comments: { type: String},
+    comments: { type: String},  
+     isUserUpdatedRejected: {
+        type: Boolean,
+        default: false
+      },
     signature: {
       fileName: { type: String },
       fileUrl: { type: String },
