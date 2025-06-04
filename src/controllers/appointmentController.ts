@@ -1,7 +1,8 @@
-// appointments.controller.ts
 import { NextFunction, Request, Response } from 'express';
 import Appointment, { IAppointment} from '../models/Appointment';
 import { Types } from 'mongoose';
+import { messaging } from '../config/firebaseConfig';
+import User from '../models/User';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -62,9 +63,11 @@ export const updateAppointmentStatus = async (req: Request, res: Response) : Pro
       return;
     }
 
+       const user = await User.findById(id);
+
     if (status === 'confirmed' && !time) {
       res.status(400).json({ error: 'Time is required for confirmation' });
-      return;
+        return;
     }
 
     if (status === 'confirmed') {
@@ -98,6 +101,16 @@ export const updateAppointmentStatus = async (req: Request, res: Response) : Pro
       res.status(404).json({ error: 'Appointment not found' });
       return;
     }
+
+    if (user?.fcmToken) {
+            await messaging.send({
+              token: user.fcmToken,
+              notification: {
+                title: `Your appointment has been confirmed`,
+                body: 'You can now proceed with your appointment.',
+              },
+        });
+      }
 
     res.json(appointment);
   } catch (error) {
