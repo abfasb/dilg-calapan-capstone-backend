@@ -179,6 +179,15 @@ io.on('connection', (socket) => {
     io.in(msg.userId).emit(msg.sender === 'admin' ? 'receive_message' : 'user_message', msg);
   });
 
+   socket.on('join_user', (userId: string) => {
+    socket.join(userId);
+    console.log(`User ${userId} joined notifications`);
+  });
+
+  socket.on('mark_read', (userId: string) => {
+    io.to(userId).emit('read_notifications');
+  });
+
   socket.on('disconnect', () => {
     activeAdmins.delete(socket.id);
     console.log('Disconnected:', socket.id);
@@ -194,6 +203,17 @@ io.engine.on("headers", (headers) => {
   headers["Access-Control-Allow-Origin"] = "http://localhost:5173";
   headers["Access-Control-Allow-Credentials"] = "true";
 });
+
+export const sendNotification = (
+  io: Server,
+  userId: string,
+  message: string,
+  type: string,
+  link: string
+) => {
+  const notification = { userId, message, type, link };
+  io.to(userId).emit('new_notification', notification);
+};
 
 
 
