@@ -53,32 +53,30 @@ export const getAppointments = async (req: Request, res: Response, next: NextFun
   }
 };
 
-export const updateAppointmentStatus = async (req: Request, res: Response) : Promise<void> => {
+export const updateAppointmentStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { status, time } = req.body;
+    const { status, time, date, userId } = req.body;
 
     if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
       res.status(400).json({ error: 'Invalid status' });
       return;
     }
 
-       const user = await User.findById(id);
-
     if (status === 'confirmed' && !time) {
       res.status(400).json({ error: 'Time is required for confirmation' });
-        return;
+      return;
     }
 
     if (status === 'confirmed') {
-      const timeRegex = /^(0[8-9]|1[0-6]):00$/;
+      const timeRegex = /^(0[8-9]|1[0-6]):00$/; 
       if (!timeRegex.test(time)) {
         res.status(400).json({ error: 'Invalid time. Use whole hours between 08:00-16:00' });
         return;
       }
 
       const existingAppointment = await Appointment.findOne({
-        date: req.body.date,
+        date,
         time,
         _id: { $ne: id }
       });
@@ -95,26 +93,52 @@ export const updateAppointmentStatus = async (req: Request, res: Response) : Pro
       id,
       updateData,
       { new: true, runValidators: true }
-    ).populate('user', 'name email');
+    ).populate('user', 'firstName lastName email');
 
     if (!appointment) {
       res.status(404).json({ error: 'Appointment not found' });
       return;
     }
 
-    if (user?.fcmToken) {
-            await messaging.send({
-              token: user.fcmToken,
-              notification: {
-                title: `Your appointment has been confirmed`,
-                body: 'You can now proceed with your appointment.',
-              },
-        });
+    const user = await User.findById(userId);
+
+    if (user?.fcmToken && (status === 'confirmed' || status === 'cancelled')) {
+      try {
+        const notifMessages = {
+          confirmed: {
+            title: 'Your appointment has been confirmed',
+            body: 'You can now proceed with your appointment.',
+          },
+          cancelled: {
+            title: 'Your appointment has been cancelled',
+            body: 'Please book another slot if needed.',
+          }
+        };
+
+         const notification = notifMessages[status as 'confirmed' | 'cancelled'];
+          await messaging.send({
+            token: user.fcmToken,
+            notification,
+            data: {
+              click_action: `${process.env.FRONTEND_URL}/account/citizen/appointments/${user._id}`
+            },
+          });
+
+
+      } catch (err: any) {
+        console.error('Failed to send FCM:', err);
+
+        if (err.errorInfo?.code === 'messaging/registration-token-not-registered') {
+          await User.findByIdAndUpdate(user._id, { $unset: { fcmToken: "" } });
+          console.warn(`Removed invalid FCM token for user ${user._id}`);
+        }
       }
+    }
+
 
     res.json(appointment);
   } catch (error) {
-    console.error(error);
+    console.error('Error updating appointment:', error);
     res.status(500).json({ error: 'Server error' });
   }
 };

@@ -122,9 +122,10 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
         data: {
           referenceNumber: response.referenceNumber,
           status,
+          click_action: `${process.env.FRONTEND_URL}/account/citizen/my-report/${user._id}`
         }
-  });
-}
+      });
+    }
     res.json(response);
   } catch (error) {
     console.error(error);
