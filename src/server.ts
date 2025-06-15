@@ -20,6 +20,7 @@ import AuditLogsRoutes from './routes/AuditLogsRoutes';
 import StaffRoutes from './routes/lgu/StaffRoutes';
 import performanceRoutes from './routes/MetricsRoutes';
 import AIRoutes from './routes/AIRoutes';
+import CitizenNotificationRoutes from './routes/CitizenNotificationRoutes';
 
 import ResponseRoutes from './routes/lgu/ResponseRoutes'
 
@@ -86,6 +87,7 @@ app.use('/api/notify', NotificationRoutes);
 app.use('/api/audit-logs', AuditLogsRoutes);
 app.use('/api/staff', StaffRoutes)
 app.use('/api/search', AIRoutes)
+app.use('/api/citizen/notification', CitizenNotificationRoutes)
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

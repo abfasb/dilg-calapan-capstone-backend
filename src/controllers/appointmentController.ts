@@ -3,6 +3,7 @@ import Appointment, { IAppointment} from '../models/Appointment';
 import { Types } from 'mongoose';
 import { messaging } from '../config/firebaseConfig';
 import User from '../models/User';
+import { createNotification } from './citizenNotificationController';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -123,6 +124,13 @@ export const updateAppointmentStatus = async (req: Request, res: Response): Prom
               click_action: `${process.env.FRONTEND_URL}/account/citizen/appointments/${user._id}`
             },
           });
+
+          await createNotification(
+            (user as { _id: Types.ObjectId })._id.toString(),
+            notification.title,
+            'appointment',
+            appointment._id.toString()
+          );
 
 
       } catch (err: any) {

@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import _ from 'lodash';
 import mongoose from 'mongoose';
 import User from '../models/User';
+import { createNotification } from './citizenNotificationController';
 
 export const getResponsesByForm = async (req: Request, res: Response, next: NextFunction) : Promise<void> => {
   try {
@@ -112,20 +113,30 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
 
     const user = await User.findById(response.userId);
 
-    if (user?.fcmToken) {
-      await messaging.send({
-        token: user.fcmToken,
-        notification: {
-          title: `Your request has been ${status}`,
-          body: comments || 'Please check your submission for more details.'
-        },
-        data: {
-          referenceNumber: response.referenceNumber,
-          status,
-          click_action: `${process.env.FRONTEND_URL}/account/citizen/my-report/${user._id}`
-        }
-      });
+   if (user) {
+      if (user.fcmToken) {
+        await messaging.send({
+          token: user.fcmToken,
+          notification: {
+            title: `Your request has been ${status}`,
+            body: comments || 'Please check your submission for more details.'
+          },
+          data: {
+            referenceNumber: response.referenceNumber,
+            status,
+            click_action: `${process.env.FRONTEND_URL}/account/citizen/my-report/${user._id}`
+          }
+        });
+      }
+
+      await createNotification(
+        (user._id as mongoose.Types.ObjectId | string).toString(),
+        `Your request with reference #${response.referenceNumber} has been ${status}.`,
+        'submission',
+        response._id.toString()
+      );
     }
+
     res.json(response);
   } catch (error) {
     console.error(error);
