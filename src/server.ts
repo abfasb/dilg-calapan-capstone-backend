@@ -18,6 +18,7 @@ import NotificationRoutes from './routes/NotificationRoutes';
 import AnalyticsAdminRoutes from './routes/AnalyticsAdminRoutes';
 import AuditLogsRoutes from './routes/AuditLogsRoutes';
 import StaffRoutes from './routes/lgu/StaffRoutes';
+import performanceRoutes from './routes/MetricsRoutes';
 import AIRoutes from './routes/AIRoutes';
 
 import ResponseRoutes from './routes/lgu/ResponseRoutes'
@@ -215,6 +216,29 @@ export const sendNotification = (
   io.to(userId).emit('new_notification', notification);
 };
 
+
+mongoose.connection.on('connected', () => {
+  console.log('📊 MongoDB connected');
+});
+
+mongoose.connection.on('error', (error : any) => {
+  console.error('📊 MongoDB connection error:', error);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('📊 MongoDB disconnected');
+});
+
+app.use('/api/performance', performanceRoutes);
+
+app.get('/api/health', (req : Request, res : Response) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
 
 
 server.listen(port, () => {

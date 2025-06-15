@@ -1,19 +1,18 @@
-import { Schema, model, Document } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface INotification extends Document {
-  userId: Schema.Types.ObjectId;
   message: string;
-  type: 'REPORT' | 'APPOINTMENT' | 'COMPLAINT' | 'EVENT';
+  type: 'complaint' | 'response';
+  relatedId: mongoose.Schema.Types.ObjectId;
   read: boolean;
-  link: string;
+  createdAt: Date;
 }
 
 const NotificationSchema = new Schema<INotification>({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   message: { type: String, required: true },
-  type: { type: String, required: true },
-  read: { type: Boolean, default: false },
-  link: { type: String, required: true }
+  type: { type: String, required: true, enum: ['complaint', 'response'] },
+  relatedId: { type: Schema.Types.ObjectId, required: true },
+  read: { type: Boolean, default: false }
 }, { timestamps: true });
 
-export default model<INotification>('Notification', NotificationSchema);
+export default mongoose.model<INotification>('Notification', NotificationSchema);
