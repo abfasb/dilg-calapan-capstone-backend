@@ -65,7 +65,7 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
       title,
       description,
       fields: JSON.parse(fields),
-      templateFile: templateData
+      template: templateData
     });
 
     await newForm.save();
@@ -88,36 +88,94 @@ export const getReportForms = async (req : Request, res : Response, next : NextF
   }
 
   
-
-export const updateReportForms = async (req : Request, res : Response, next : NextFunction) : Promise <void> => {
+  export const updateReportForms = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { id } = req.params
-    const updateData = req.body
+    const { id } = req.params;
+    const updateData: any = req.body;
+
+    const existingForm = await ReportForms.findById(id);
+    if (!existingForm) {
+      res.status(404).json({ success: false, message: 'Form not found' });
+      return;
+    }
+
+    if (updateData.removeTemplate === 'true' && existingForm.template?.fileUrl) {
+      try {
+        const fileUrl = existingForm.template.fileUrl;
+        const baseUrl = `https://storage.googleapis.com/${bucket.name}/`;
+        const filePath = decodeURIComponent(fileUrl.replace(baseUrl, '').split('?')[0]);
+
+        await bucket.file(filePath).delete();
+        console.log(`Deleted template: ${filePath}`);
+      } catch (err) {
+        console.error('Error deleting template:', err);
+      }
+      updateData.template = null;
+    }
+
+    let uploadedFile = null;
+    
+    if (req.file) {
+      uploadedFile = req.file;
+    } 
+    else if (Array.isArray(req.files) && req.files.length > 0) {
+      uploadedFile = req.files[0];
+    }
+
+    if (uploadedFile) {
+      const fileRef = bucket.file(`uploads/${uuidv4()}-${uploadedFile.originalname}`);
+
+      await fileRef.save(uploadedFile.buffer, {
+        metadata: { contentType: uploadedFile.mimetype },
+      });
+
+      const [fileUrl] = await fileRef.getSignedUrl({
+        action: 'read',
+        expires: '03-01-2030',
+      });
+
+      updateData.template = {
+        fileName: uploadedFile.originalname,
+        fileUrl,
+        mimetype: uploadedFile.mimetype,
+        uploadedAt: new Date(),
+      };
+    }
+
+    try {
+      if (updateData.fields && typeof updateData.fields === 'string') {
+        updateData.fields = JSON.parse(updateData.fields);
+      }
+    } catch (e) {
+      console.error('Error parsing fields:', e);
+       res.status(400).json({
+        success: false,
+        message: 'Invalid fields format',
+      });
+      return;
+    }
 
     const updatedForm = await ReportForms.findByIdAndUpdate(
       id,
       { $set: updateData },
       { new: true, runValidators: true }
-    )
+    );
 
-    if (!updatedForm) {
-      res.status(404).json({ success: false, message: 'Form not found' })
-      return;
-    }
-
-    res.status(200).json({ 
-      success: true, 
+    res.status(200).json({
+      success: true,
       message: 'Form updated successfully',
-      data: updatedForm
-    })
+      data: updatedForm,
+    });
   } catch (error) {
-    console.error('Update error:', error)
-    res.status(500).json({ 
-      success: false, 
+    console.error('Update error:', error);
+    res.status(500).json({
+      success: false,
       message: 'Server error during form update',
-    })
+    });
   }
-}
+};
+
+
   export const getUserReports = async (req: Request, res: Response) => {
     try {
       const responses = await ResponseCitizen.find({ userId: req.params.id })
