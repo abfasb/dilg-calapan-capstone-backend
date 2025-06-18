@@ -65,7 +65,7 @@
   
 
 router.get('/get-report', getReportForms);
-router.put('/update-report/:id', updateReportForms);
+router.put('/update-report/:id', upload.single('template'), updateReportForms);
 
 router.get('/cases', getCitizenCases);
  
