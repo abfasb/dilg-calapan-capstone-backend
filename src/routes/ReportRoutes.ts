@@ -5,6 +5,7 @@
   import multer from 'multer';
   import { bucket } from '../config/firebaseConfig';
   import { v4 as uuidv4 } from 'uuid';
+  import mongoose from 'mongoose';
   import _ from 'lodash';
 
 
@@ -132,9 +133,15 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response):
       }
     }
 
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+       res.status(400).json({ error: "Invalid form ID" });
+       return;
+    }
+
+
     const newSubmission = new ResponseCitizen({
       referenceNumber,
-      formId: req.params.id,
+      formId: new mongoose.Types.ObjectId(req.params.id),
       userId: req.body.userId,
       submissionType,
       data: submissionType === 'form' ? _.omit(req.body, fieldNames) : null,
@@ -172,6 +179,7 @@ export default router;
 router.get('/my-reports-track/:id', getUserReportsAndTracking);
 
 router.get('/report/:id', getSubmissionController);
+
 
 export default router;
 

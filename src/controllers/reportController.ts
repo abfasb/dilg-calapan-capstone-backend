@@ -408,3 +408,21 @@ export const getDocumentStatusHistory = async (req: Request, res: Response, next
     res.status(500).json({ message: 'Server error while fetching document history' })
   }
 }
+
+export const getAllResponsesWithFormInfo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const responses = await ResponseCitizen.find()
+      .populate('formId', 'title')
+
+    res.json(responses);
+  } catch (error) {
+    res.status(500).json({
+      message: 'Server error',
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
