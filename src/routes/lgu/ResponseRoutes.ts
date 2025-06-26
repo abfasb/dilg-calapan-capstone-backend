@@ -1,5 +1,5 @@
 import express from 'express';
-import { getCombinedHistory, getResponseById, getResponseDetails, getResponsesByForm, updateResponse, updateResponseStatus } from '../../controllers/responseController';
+import { getCombinedHistory, getResponseById, getResponseDetails, getResponsesByForm, getVerification, updateResponse, updateResponseStatus } from '../../controllers/responseController';
 import multer from 'multer';
 
 const upload: multer.Multer = multer({ storage: multer.memoryStorage() });
@@ -20,6 +20,8 @@ router.get('/history/combined', getCombinedHistory);
 
 router.get('/revise/:id', getResponseById);
 router.put('/revise/:id', upload.array('files'), updateResponse);
+
+router.get('/verify/:id', getVerification);
 
 
 export default router;
