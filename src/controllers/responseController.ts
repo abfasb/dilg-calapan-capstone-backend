@@ -289,3 +289,60 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
     });
   }
 };
+
+
+export const getVerification = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const submission = await ResponseCitizen.findOne({ referenceNumber: id })
+      .populate('userId', 'firstName lastName email')
+      .populate({
+        path: 'formId',
+        select: 'title type',
+        model: 'ReportForms'
+      });
+
+    if (!submission) {
+      res.status(404).json({ success: false, message: "Submission not found." });
+      return;
+    }
+
+    const form: any = submission.formId;
+    const user: any = submission.userId;
+
+    const fullName = user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : undefined;
+
+    const isFormDocument = submission.data && submission.data.size > 0;
+    const isTemplateDocument = !isFormDocument && submission.bulkFile?.fileUrl;
+
+    const documentType = isFormDocument ? "form" : isTemplateDocument ? "template" : "unknown";
+
+    res.status(200).json({
+      success: true,
+      message: "Submission verified successfully.",
+      data: {
+        referenceNumber: submission.referenceNumber,
+        status: submission.status,
+        submittedBy: {
+          id: user?._id,
+          name: fullName,
+          email: user?.email
+        },
+        formId: form?._id,
+        formTitle: form?.title,
+        formType: form?.type,
+        documentType,
+        createdAt: submission.createdAt,
+        updatedAt: submission.get('updatedAt') || submission.createdAt,
+        signature: submission.signature,
+        signedBy: fullName,
+        verificationId: submission.referenceNumber
+      },
+    });
+
+  } catch (err) {
+    console.error("Error verifying submission:", err);
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
