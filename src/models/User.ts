@@ -19,6 +19,7 @@ export interface IUser extends Document {
     lastLogin: Date,
     fcmToken?: string;
     lastActivity: Date; 
+    isActive: boolean;
 }
 
 const UserSchema : Schema = new Schema ({
@@ -70,6 +71,10 @@ const UserSchema : Schema = new Schema ({
         type: Date,
         default: Date.now
     },
+     isActive: {  
+        type: Boolean,
+        default: true
+    }
 }, { timestamps: true})
 
 const User = mongoose.model<IUser>('User', UserSchema);

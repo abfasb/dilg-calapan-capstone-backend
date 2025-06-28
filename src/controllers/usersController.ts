@@ -1,6 +1,11 @@
 import { Request, Response } from 'express';
 import User from '../models/User';
 import GoogleUser from '../models/GoogleUser';
+import ReportForms from '../models/ReportForm';
+import LGU from '../models/LGUPendingUser';
+import ResponseCitizen from '../models/ResponseCitizen';
+import Complaint from '../models/Complaint';
+import Event from '../models/Event';
 
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -38,3 +43,51 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
       res.status(500).json({ message: "Internal Server Error" });
     }
   };
+
+  export const getSystemHealth = async (req: Request, res: Response) : Promise<void> => {
+  try {
+    const [
+      userCount,
+      pendingLGUCount,
+      formCount,
+      submissions,
+      complaints,
+      events,
+      activeUsers,
+      latestActivity
+    ] = await Promise.all([
+      User.countDocuments(),
+      LGU.countDocuments({ status: 'pending' }),
+      ReportForms.countDocuments(),
+      ResponseCitizen.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1  } } } 
+      ]),
+      Complaint.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      Event.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      User.countDocuments({ lastActivity: { $gt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }),
+      User.find().sort({ lastActivity: -1 }).limit(5).select('firstName lastName lastActivity role')
+    ]);
+
+    const transformAgg = (data: any[]) => 
+      data.reduce((acc, curr) => ({ ...acc, [curr._id]: curr.count }), {});
+
+    res.json({
+      metrics: {
+        users: userCount,
+        activeUsers,
+        pendingLGUs: pendingLGUCount,
+        forms: formCount,
+        submissions: transformAgg(submissions),
+        complaints: transformAgg(complaints),
+        events: transformAgg(events)
+      },
+      latestActivity
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
