@@ -46,115 +46,96 @@ export const createUser = async(req: Request, res: Response, next:NextFunction):
     }
 }
 
-export const loginUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const { email, password } = req.body;
-  
-      if (!email || !password) {
-        res.status(400).json({ message: "Email and password are required" });
-        return;
-      }
-  
-      const findUser = await User.findOne({ email });
-  
-      if (!findUser) {
-        res.status(404).json({ message: 'You don’t have an account' });
-        return;
-      }
-  
-      const isPasswordValid = await bcrypt.compare(password, findUser.password);
-  
-      if (!isPasswordValid) {
-        res.status(401).json({ message: 'Invalid Credentials' });
-        return;
-      }
-  
-      const token = jwt.sign(
-        { id: findUser._id, role: findUser.role, email: findUser.email },
-        jwtSecret,
-        { expiresIn: '5d' }
-      );
-  
-      const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress)?.toString();
-      const userAgent = req.headers['user-agent'] || 'Unknown device';
-  
-      const dateToday = new Date();
+export const loginUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email, password, rememberMe = false } = req.body;
 
-      if (findUser.role === "Admin") {
-        res.status(200).json({
-          message: "Login Successfully",
-          token,
-          redirectUrl: `/account/admin/${findUser._id}`,
-          user: {
-            id: findUser._id,
-            email: findUser.email,
-            role: findUser.role,
-            position: findUser.position,
-          },
-        });
-        return;
-      }
-  
-      if (findUser.role === "lgu") {
+    if (!email || !password) {
+      res.status(400).json({ message: "Email and password are required" });
+      return;
+    }
 
-        await User.updateOne(
-          { _id: findUser._id },
-          { $set: { lastActivity: dateToday } }
-        );
-        await AutditLogs.create({
-          userId: findUser._id,
-          email: findUser.email,
-          role: findUser.role,
-          action: 'Logged in as LGU',
-          ipAddress,
-          userAgent,
-        });
-  
-        res.status(200).json({
-          message: "Login Successfully",
-          token,
-          redirectUrl: `/account/lgu/${findUser._id}`,
-          user: {
-            id: findUser._id,
-            email: findUser.email,
-            role: findUser.role,
-            name: findUser.firstName + ' ' + findUser.lastName,
-          },
-        });
-        return;
-      }
-  
-      await AutditLogs.create({
-        userId: findUser._id,
+    const findUser = await User.findOne({ email });
+
+    if (!findUser) {
+      res.status(404).json({ message: 'You don’t have an account' });
+      return;
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, findUser.password);
+
+    if (!isPasswordValid) {
+      res.status(401).json({ message: 'Invalid Credentials' });
+      return;
+    }
+
+    const expiresIn = rememberMe ? '30d' : '1d';
+
+    const token = jwt.sign(
+      { 
+        id: findUser._id, 
+        role: findUser.role, 
+        email: findUser.email 
+      },
+      jwtSecret,
+      { expiresIn }
+    );
+
+    const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress)?.toString();
+    const userAgent = req.headers['user-agent'] || 'Unknown device';
+
+    const dateToday = new Date();
+
+    await User.updateOne(
+      { _id: findUser._id },
+      { $set: { lastActivity: dateToday } }
+    );
+
+    // Create audit log
+    await AutditLogs.create({
+      userId: findUser._id,
+      email: findUser.email,
+      role: findUser.role,
+      action: `Logged in as ${findUser.role}`,
+      ipAddress,
+      userAgent,
+    });
+
+    // Determine redirect URL based on role
+    let redirectUrl = '';
+    switch (findUser.role.toLowerCase()) {
+      case 'admin':
+        redirectUrl = `/account/admin/${findUser._id}`;
+        break;
+      case 'lgu':
+        redirectUrl = `/account/lgu/${findUser._id}`;
+        break;
+      default:
+        redirectUrl = `/account/citizen/${findUser._id}`;
+    }
+
+    res.status(200).json({
+      message: "Login Successfully",
+      token,
+      user: {
+        id: findUser._id,
+        firstName: findUser.firstName,
+        lastName: findUser.lastName,
+        position: findUser.position,
+        barangay: findUser.barangay,
+        phoneNumber: findUser.phoneNumber,
+        name: `${findUser.firstName} ${findUser.lastName}`,
         email: findUser.email,
         role: findUser.role,
-        action: 'Logged in as Citizen',
-        ipAddress,
-        userAgent
-      });
-  
-      res.status(200).json({
-        message: 'Login Successfully',
-        token,
-        user: {
-          id: findUser._id,
-          firstName: findUser.firstName,
-          lastName: findUser.lastName,
-          position: findUser.position,
-          barangay: findUser.barangay,
-          phoneNumber: findUser.phoneNumber,
-          name: findUser.firstName + ' ' + findUser.lastName,
-          email: findUser.email,
-          role: findUser.role,
-        },
-        redirectUrl: `/account/citizen/${findUser._id}`
-      });
-  
-    } catch (error) {
-      console.error("Login error:", error);
-      res.status(500).json({ message: "Internal Server Error" });
-    }
-  };
+      },
+      redirectUrl
+    });
+
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 
 
