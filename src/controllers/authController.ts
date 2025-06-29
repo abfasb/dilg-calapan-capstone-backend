@@ -46,6 +46,7 @@ export const createUser = async(req: Request, res: Response, next:NextFunction):
     }
 }
 
+
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, rememberMe = false } = req.body;
@@ -69,7 +70,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const expiresIn = rememberMe ? '30d' : '1d';
+    // Convert expiration to seconds
+    const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 days or 1 day in seconds
 
     const token = jwt.sign(
       { 
@@ -136,8 +138,6 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
-
 
 export const forgotPasswordUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

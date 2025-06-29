@@ -7,6 +7,7 @@
   import { v4 as uuidv4 } from 'uuid';
   import mongoose from 'mongoose';
   import _ from 'lodash';
+import LGUNotication from '../models/LGUNotication';
 
 
   const router = Express.Router();
@@ -148,6 +149,16 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response):
       files: submissionType === 'form' ? uploadedFiles : [],
       bulkFile: submissionType === 'file' ? bulkFileData : null,
       status: "pending",
+      createdAt: new Date()
+    });
+
+    await LGUNotication.create({
+      userId: req.body.userId, 
+      type: 'submission',
+      referenceId: newSubmission._id,
+      title: 'New Submission Received',
+      message: `A new submission has been made with reference number ${referenceNumber}.`,
+      read: false,
       createdAt: new Date()
     });
 
