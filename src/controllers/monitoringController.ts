@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import ResponseCitizen from '../models/ResponseCitizen';
 import ReportForms from '../models/ReportForm';
 import ReportReminder from '../models/ReportReminder';
+import { messaging } from '../config/firebaseConfig';
+import User from '../models/User';
 
 interface Barangay {
     id: string,
@@ -73,91 +75,162 @@ interface Barangay {
         { id: "62", name: "Wawa" },
       ];
 
-export const getMonitoringData = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { formId } = req.query;
+      export const getMonitoringData = async (req: Request, res: Response): Promise<void> => {
+        try {
+          const { formId } = req.query;
 
-    if (!formId) {
-      res.status(400).json({ message: 'Form ID is required' });
-      return;
-    }
+          if (!formId) {
+            res.status(400).json({ message: 'Form ID is required' });
+            return;
+          }
 
-    const submissions = await ResponseCitizen.find({ formId }).lean();
+          // Fetch submissions and populate user data
+          const submissions = await ResponseCitizen.find({ formId })
+            .populate('userId', 'barangay position')
+            .lean();
 
-    const statusMap = new Map();
+          const statusMap = new Map();
 
-    barangays.forEach(barangay => {
-      statusMap.set(barangay.id, {
-        barangayId: barangay.id,
-        barangayName: barangay.name,
-        positions: {
-          'Captain': false,
-          'Secretary': false,
-          'Treasurer': false,
-          'SK Chairman': false,
-          'Councilor': false
-        },
-        submittedCount: 0
-      });
-    });
+          barangays.forEach(barangay => {
+            statusMap.set(barangay.id, {
+              barangayId: barangay.id,
+              barangayName: barangay.name,
+              positions: {
+                'Captain': false,
+                'Secretary': false,
+                'Treasurer': false,
+                'SK Chairman': false,
+                'Councilor': false
+              },
+              submittedCount: 0
+            });
+          });
 
-    submissions.forEach(submission => {
-      const barangayKey = (submission as any).barangayId || (submission as any).barangay;
-      const barangayData = statusMap.get(barangayKey);
-      if (barangayData) {
-        const position = (submission as any).position;
-        if (position && barangayData.positions[position] !== undefined) {
-          barangayData.positions[position] = true;
-          barangayData.submittedCount++;
+          // Create a name-to-ID map for barangays
+          const barangayNameToIdMap = new Map<string, string>();
+          barangays.forEach(barangay => {
+            barangayNameToIdMap.set(barangay.name, barangay.id);
+          });
+
+          submissions.forEach(submission => {
+            // Try to get barangay and position from submission data first
+            let barangayKey: string | null = null;
+            let position: string | null = null;
+            
+            if (submission.data) {
+              barangayKey = submission.data.barangay || submission.data.barangayId;
+              position = submission.data.position;
+            }
+
+            // If not found in submission data, try user data
+            if ((!barangayKey || !position) && submission.userId) {
+              const user = submission.userId as any;  // Type assertion for populated data
+              
+              // Get barangay ID from name
+              if (user.barangay && barangayNameToIdMap.has(user.barangay)) {
+                barangayKey = barangayNameToIdMap.get(user.barangay) as string;
+              }
+              
+              position = user.position;
+            }
+
+            if (!barangayKey || !position) return;
+
+            const barangayData = statusMap.get(barangayKey);
+            if (barangayData && barangayData.positions[position] !== undefined) {
+              barangayData.positions[position] = true;
+              barangayData.submittedCount++;
+            }
+          });
+
+          const monitoringData = Array.from(statusMap.values()).map(barangay => {
+            const submittedPositions = Object.values(barangay.positions).filter(Boolean).length;
+            const totalPositions = Object.keys(barangay.positions).length;
+
+            let overallStatus: 'low' | 'medium' | 'high' = 'low';
+            if (submittedPositions === totalPositions) {
+              overallStatus = 'high';
+            } else if (submittedPositions >= totalPositions / 2) {
+              overallStatus = 'medium';
+            }
+
+            return {
+              ...barangay,
+              overallStatus
+            };
+          });
+
+          res.json(monitoringData);
+        } catch (error) {
+          console.error('Error fetching monitoring data:', error);
+          res.status(500).json({ message: 'Server error' });
         }
-      }
-    });
-
-    const monitoringData = Array.from(statusMap.values()).map(barangay => {
-      const submittedPositions = Object.values(barangay.positions).filter(Boolean).length;
-      const totalPositions = Object.keys(barangay.positions).length;
-
-      let overallStatus: 'low' | 'medium' | 'high' = 'low';
-      if (submittedPositions === totalPositions) {
-        overallStatus = 'high';
-      } else if (submittedPositions >= totalPositions / 2) {
-        overallStatus = 'medium';
-      }
-
-      return {
-        ...barangay,
-        overallStatus
       };
-    });
-
-    res.json(monitoringData);
-  } catch (error) {
-    console.error('Error fetching monitoring data:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};
 
 
-export const sendNotification = async (req : Request, res : Response) : Promise<void> => {
+export const sendNotification = async (req: Request, res: Response): Promise<void> => {
   try {
     const { formId, barangayId, message } = req.body;
     
+    const barangay = barangays.find(b => b.id === barangayId);
+    if (!barangay) {
+      res.status(404).json({ message: 'Barangay not found' });
+      return;
+    }
+
+    const users = await User.find({ 
+      barangay: barangay.name,
+      fcmToken: { $exists: true, $ne: '' }
+    });
+
     const newNotification = new ReportReminder({
       formId,
       barangayId,
       message
     });
-    
     await newNotification.save();
+
+    interface UserWithFcmToken {
+      _id: string;
+      fcmToken: string;
+    }
+
+    interface SendPromiseResult {
+      success?: boolean;
+      error?: any;
+    }
+
+    const sendPromises: Promise<SendPromiseResult | null>[] = users.map((user) => {
+      return messaging.send({
+        token: user.fcmToken as string,
+        notification: {
+          title: 'Submission Reminder',
+          body: message
+        },
+        data: {
+          type: 'submission-reminder',
+          formId: formId.toString(),
+          barangayId,
+          click_action: `${process.env.FRONTEND_URL}/dashboard`
+        }
+      }).then(() => ({ success: true }))
+        .catch(error => {
+          console.error(`Failed to send notification to user ${user._id}:`, error);
+          return { error };
+        });
+    });
+
+    await Promise.all(sendPromises);
     
-    // In a real app, you would also:
-    
-    res.status(201).json({ message: 'Notification sent successfully' });
+    res.status(201).json({ 
+      message: `Notification sent to ${users.length} users in ${barangay.name}` 
+    });
   } catch (error) {
     console.error('Error sending notification:', error);
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 export const getForms = async (req : Request, res : Response) : Promise<void> => {
   try {

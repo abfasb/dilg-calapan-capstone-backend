@@ -70,8 +70,9 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Convert expiration to seconds
-    const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : 24 * 60 * 60; // 30 days or 1 day in seconds
+    const expiresIn = rememberMe ? 
+      30 * 24 * 60 * 60 :  // 30 days in seconds
+      1 * 60 * 60;         // 1 hour in seconds
 
     const token = jwt.sign(
       { 
