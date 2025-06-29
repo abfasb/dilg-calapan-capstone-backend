@@ -4,6 +4,7 @@ import { Types } from 'mongoose';
 import { messaging } from '../config/firebaseConfig';
 import User from '../models/User';
 import { createNotification } from './citizenNotificationController';
+import LGUNotication from '../models/LGUNotication';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -27,6 +28,17 @@ export const createAppointment = async (req: Request, res: Response, next: NextF
     });
 
     await appointment.save();
+
+    await LGUNotication.create({
+      userId: user, 
+      type: 'appointment',
+      referenceId: appointment._id,
+      title: 'Appointment Request Submitted',
+      message: `New appointment titled "${title}" has been submitted and is pending approval.`,
+      read: false,
+      createdAt: new Date()
+    });
+
     res.status(201).json(appointment);
   } catch (error) {
     console.error(error);

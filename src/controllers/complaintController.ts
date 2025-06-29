@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import Complaint, { IComplaint } from '../models/Complaint';
 import mongoose from 'mongoose';
 import Notification from '../models/Notification';
+import LGUNotication from '../models/LGUNotication';
 
 export const createComplaint = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -31,6 +32,16 @@ export const createComplaint = async (req: Request, res: Response): Promise<void
         type: 'complaint',
         relatedId: complaint._id,
       });
+
+      await LGUNotication.create({
+      userId: userId ?? undefined, 
+      type: 'submission', 
+      referenceId: complaint._id,
+      title: 'New Complaint Submitted',
+      message: `A new complaint titled "${complaint.title}" has been submitted.`,
+      read: false,
+      createdAt: new Date()
+    });
 
     const newComplaint = await Complaint.create(complaintData);
     res.status(201).json(newComplaint);
