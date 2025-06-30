@@ -7,6 +7,7 @@ import ResponseCitizen from '../models/ResponseCitizen';
 import Complaint from '../models/Complaint';
 import Event from '../models/Event';
 
+
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
     try {
       const [users, googleUsers] = await Promise.all([
@@ -89,5 +90,64 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+
+export const freezeAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { freezeDuration } = req.body;
+    const days = parseInt(freezeDuration);
+
+    let freezeUntil: Date = new Date();
+    if (days > 0) {
+      freezeUntil.setDate(freezeUntil.getDate() + days);
+    } else {
+      freezeUntil = new Date(0); 
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    if (user.role === 'admin') {
+      res.status(403).json({ message: 'Cannot freeze admin accounts' });
+      return;
+    }
+
+    user.isActive = false;
+    user.freezeUntil = freezeUntil;
+    await user.save();
+
+    res.status(200).json({ message: 'Account frozen successfully' });
+  } catch (error) {
+    console.error('Freeze account error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    if (user.role === 'admin') {
+      res.status(403).json({ message: 'Cannot delete admin accounts' });
+      return;
+    }
+
+    await User.findByIdAndDelete(id);
+    res.status(200).json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
   }
 };
