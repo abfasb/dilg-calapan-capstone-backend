@@ -1,5 +1,5 @@
 import express from "express";
-import { deleteAccount, freezeAccount, getAllUsers, getSystemHealth } from "../controllers/usersController";
+import { deleteAccount, freezeAccount, getAllUsers, getSystemHealth, verifySession } from "../controllers/usersController";
 import { getUsers } from "../controllers/authController";
 
 const router = express.Router();
@@ -10,7 +10,8 @@ router.get("/users/:id", getUsers);
 router.get("/system-health", getSystemHealth);
 
 
-router.put("/freeze-account", freezeAccount);
-router.delete("/delete-account", deleteAccount);
+router.put("/freeze-account/:id", freezeAccount);
+router.delete("/delete-account/:id", deleteAccount);
+router.get("/verify-session", verifySession);
 
 export default router;

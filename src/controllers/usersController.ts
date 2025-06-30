@@ -7,6 +7,10 @@ import ResponseCitizen from '../models/ResponseCitizen';
 import Complaint from '../models/Complaint';
 import Event from '../models/Event';
 
+import jwt from 'jsonwebtoken';
+
+const jwtSecret = process.env.JWT_SECRET_KEY || 'asdsajbdjba';
+
 
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -149,5 +153,33 @@ export const deleteAccount = async (req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('Delete account error:', error);
     res.status(500).json({ message: 'Internal Server Error' });
+  }
+};
+
+
+export const verifySession = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      res.status(401).json({ message: "Unauthorized" });
+      return;
+    }
+
+    const decoded = jwt.verify(token, jwtSecret) as { id: string };
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      res.status(404).json({ message: "Account not found", reason: "deleted" });
+      return;
+    }
+
+    if (user.freezeUntil && new Date() < user.freezeUntil) {
+      res.status(403).json({ message: `Account frozen until ${user.freezeUntil}`, reason: "frozen" });
+      return;
+    }
+
+    res.status(200).json({ message: "Session valid", role: user.role });
+  } catch (error) {
+    res.status(401).json({ message: "Invalid token" });
   }
 };

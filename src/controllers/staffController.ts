@@ -13,7 +13,8 @@ export const getStaff = async (req: Request, res: Response): Promise<void> => {
     const now = new Date();
     const staffWithStatus = staff.map(member => {
       const lastActivity = member.lastActivity || member.updatedAt;
-      const isActive = now.getTime() - new Date(lastActivity).getTime() < 5 * 60 * 1000;
+       const isActive = now.getTime() - new Date(lastActivity).getTime() < 20 * 60 * 1000;
+
       
       return {
         ...member,
