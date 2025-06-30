@@ -46,7 +46,6 @@ export const createUser = async(req: Request, res: Response, next:NextFunction):
     }
 }
 
-
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, rememberMe = false } = req.body;
@@ -63,6 +62,21 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // If freezeUntil is set and still in the future, block login
+    if (findUser.freezeUntil && new Date() < findUser.freezeUntil) {
+      const freezeDate = findUser.freezeUntil.toISOString().split('T')[0]; 
+      res.status(403).json({ 
+        message: `Your account is frozen until ${freezeDate}.`, 
+        freezeUntil: freezeDate 
+      });
+      return;
+    }
+
+    if (findUser.freezeUntil && new Date() >= findUser.freezeUntil) {
+      findUser.freezeUntil = undefined as any;
+      await findUser.save();
+    }
+
     const isPasswordValid = await bcrypt.compare(password, findUser.password);
 
     if (!isPasswordValid) {
@@ -71,8 +85,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     }
 
     const expiresIn = rememberMe ? 
-      30 * 24 * 60 * 60 :  
-      1 * 60 * 60;        
+      30 * 24 * 60 * 60 :  // 30 days
+      1 * 60 * 60;         // 1 hour
 
     const token = jwt.sign(
       { 
@@ -96,7 +110,6 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       { $set: { lastActivity: dateToday } }
     );
 
-    // Create audit log
     await AutditLogs.create({
       userId: findUser._id,
       email: findUser.email,
@@ -106,7 +119,6 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       userAgent,
     });
 
-    // Determine redirect URL based on role
     let redirectUrl = '';
     switch (findUser.role.toLowerCase()) {
       case 'admin':
@@ -134,8 +146,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
         role: findUser.role,
       },
       redirectUrl,
-       rememberMe,
-        maxAge
+      rememberMe,
+      maxAge
     });
 
   } catch (error) {
@@ -143,6 +155,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 export const forgotPasswordUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
