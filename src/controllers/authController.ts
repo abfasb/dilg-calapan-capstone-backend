@@ -71,8 +71,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     }
 
     const expiresIn = rememberMe ? 
-      30 * 24 * 60 * 60 :  // 30 days in seconds
-      1 * 60 * 60;         // 1 hour in seconds
+      30 * 24 * 60 * 60 :  
+      1 * 60 * 60;        
 
     const token = jwt.sign(
       { 
@@ -83,6 +83,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       jwtSecret,
       { expiresIn }
     );
+
+    const maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 0;
 
     const ipAddress = (req.headers['x-forwarded-for'] || req.socket.remoteAddress)?.toString();
     const userAgent = req.headers['user-agent'] || 'Unknown device';
@@ -131,7 +133,9 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
         email: findUser.email,
         role: findUser.role,
       },
-      redirectUrl
+      redirectUrl,
+       rememberMe,
+        maxAge
     });
 
   } catch (error) {
