@@ -27,6 +27,7 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
         phoneNumber: user.phoneNumber,
         position: user.position,
         createdAt: user.createdAt,
+        freezeUntil: user.freezeUntil,
         type: "Regular",
       }));
   
