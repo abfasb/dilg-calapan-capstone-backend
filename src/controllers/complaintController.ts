@@ -33,15 +33,6 @@ export const createComplaint = async (req: Request, res: Response): Promise<void
         relatedId: complaint._id,
       });
 
-      await LGUNotication.create({
-      userId: userId ?? undefined, 
-      type: 'submission', 
-      referenceId: complaint._id,
-      title: 'New Complaint Submitted',
-      message: `A new complaint titled "${complaint.title}" has been submitted.`,
-      read: false,
-      createdAt: new Date()
-    });
 
     const newComplaint = await Complaint.create(complaintData);
     res.status(201).json(newComplaint);

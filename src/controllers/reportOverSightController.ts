@@ -39,7 +39,7 @@ export const getAllSubmissions = async (req : Request, res : Response, next: Nex
   try {
     const submissions = await ResponseCitizen.find()
       .populate('formId', 'title')
-      .populate('userId', 'name email')
+      .populate('userId', 'lastName firstName email')
       .populate('history.assignedLgu', 'name')
       .sort({ createdAt: -1 });
 
