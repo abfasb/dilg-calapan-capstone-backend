@@ -13,6 +13,7 @@
     "@types/password": "^0.1.2",
     "@types/pdf-parse": "^1.1.5",
     "@types/socket.io": "^3.0.1",
+    "@types/speakeasy": "^2.0.10",
     "@types/uuid": "^10.0.0",
     "cookie-session": "^2.1.0",
     "ts-node": "^10.9.2",
@@ -44,7 +45,9 @@
     "pdf-parse": "^1.1.1",
     "pdf-poppler": "^0.2.1",
     "socket.io": "^4.8.1",
+    "speakeasy": "^2.0.0",
     "tesseract.js": "^6.0.1",
+    "twilio": "^5.8.0",
     "uuid": "^11.1.0",
     "zod": "^3.24.2"
   },

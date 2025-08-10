@@ -25,6 +25,7 @@ import ReportOverSightRoutes from './routes/ReportOverSightRoutes'
 import ResponseRoutes from './routes/lgu/ResponseRoutes'
 import LguNotificationRoutes from './routes/LguNotificationRoutes';
 import MonitoringRoutes from './routes/MonitoringRoutes';
+import OtpRoutes from './routes/OtpRoutes';
 
 import { Request, Response } from 'express';
 import session from 'express-session';
@@ -92,6 +93,7 @@ app.use('/api/search', AIRoutes)
 app.use('/api/citizen/notification', CitizenNotificationRoutes)
 app.use('/api/report-oversight', ReportOverSightRoutes)
 app.use('/api/monitoring', MonitoringRoutes)
+app.use('/api/send-otp', OtpRoutes)
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

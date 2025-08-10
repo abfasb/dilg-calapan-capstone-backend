@@ -6,45 +6,76 @@ import nodemailer from 'nodemailer';
 import crypto from 'crypto';
 import GoogleUser from '../models/GoogleUser';
 import AutditLogs from '../models/AutditLogs';
-
+import { verifyOTP } from './otpController';
 
 const jwtSecret = process.env.JWT_SECRET_KEY || 'asdsajbdjba';
 
-export const createUser = async(req: Request, res: Response, next:NextFunction): Promise<void> => {
-    try {
-        const { email, password, role = "citizen", lastName, firstName, barangay, position, phoneNumber } = req.body;
+export const createUser = async(req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+     const { email, password, role = "citizen", lastName, firstName, barangay, position, phoneNumber, otp } = req.body;
 
-        const existingEmail = await User.findOne({ email });
-        if (existingEmail) {
-             res.status(409).json({ message: 'Email already exists' });
-             return
-        }
-
-        const existingPosition = await User.findOne({ barangay, position });
-        if (existingPosition) {
-             res.status(409).json({ message: 'This position in the selected barangay is already taken' });
-             return
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user: IUser = new User({ 
-            email, 
-            password: hashedPassword, 
-            role, 
-            lastName, 
-            firstName, 
-            barangay, 
-            position, 
-            phoneNumber 
-        });
+    if (role === "citizen") {
+      if (!otp) {
+        res.status(400).json({ message: 'OTP is required for official registration' });
+        return;
+      }
+      
+      const otpRequest = {
+        body: { phoneNumber, otp }
+      } as Request;
+      
+      let otpVerified = false;
+      let verificationError: Error | null = null;
+      
+      await new Promise<void>((resolve) => {
+        const mockNext = (err?: any) => {
+          if (err) verificationError = err;
+          resolve();
+        };
         
-        await user.save();
-        res.status(201).json({ message: 'Account created successfully!' });
-
-    } catch(error) {
-        next(error);
+        verifyOTP(otpRequest, res, mockNext);
+      });
+      
+      if (verificationError) {
+        throw verificationError;
+      }
     }
-}
+
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+         res.status(409).json({ message: 'Email already exists' });
+         return;
+    }
+
+    const existingPosition = await User.findOne({ barangay, position });
+    if (existingPosition) {
+         res.status(409).json({ message: 'This position in the selected barangay is already taken' });
+         return;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user: IUser = new User({ 
+        email, 
+        password: hashedPassword, 
+        role, 
+        lastName, 
+        firstName, 
+        barangay, 
+        position, 
+        phoneNumber 
+    });
+    
+    await user.save();
+    res.status(201).json({ message: 'Account created successfully!' });
+
+  } catch(error: any) {
+    if (error.message.includes('OTP')) {
+      res.status(400).json({ message: error.message });
+    } else {
+      next(error);
+    }
+  }
+};
 
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
