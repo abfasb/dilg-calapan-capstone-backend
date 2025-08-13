@@ -12,7 +12,7 @@ const jwtSecret = process.env.JWT_SECRET_KEY || 'asdsajbdjba';
 
 export const createUser = async(req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-     const { email, password, role = "citizen", lastName, firstName, barangay, position, phoneNumber, otp } = req.body;
+    const { email, password, role = "citizen", lastName, firstName, barangay, position, phoneNumber, otp } = req.body;
 
     if (role === "citizen") {
       if (!otp) {
@@ -20,49 +20,51 @@ export const createUser = async(req: Request, res: Response, next: NextFunction)
         return;
       }
       
+      // Verify OTP
       const otpRequest = {
         body: { phoneNumber, otp }
       } as Request;
       
-      let otpVerified = false;
-      let verificationError: Error | null = null;
+      const otpResponse = {
+        status: (code: number) => otpResponse,
+        json: (data: any) => {
+          if (!data.success) {
+            throw new Error(data.message || 'OTP verification failed');
+          }
+        }
+      } as Response;
       
-      await new Promise<void>((resolve) => {
-        const mockNext = (err?: any) => {
-          if (err) verificationError = err;
-          resolve();
-        };
-        
-        verifyOTP(otpRequest, res, mockNext);
-      });
-      
-      if (verificationError) {
-        throw verificationError;
+      await verifyOTP(otpRequest, otpResponse, next);
+    }
+
+    // Check for existing email
+    const existingEmail = await User.findOne({ email });
+    if (existingEmail) {
+      res.status(409).json({ message: 'Email already exists' });
+      return;
+    }
+
+    // Check for existing position in barangay
+    if (role === "citizen") {
+      const existingPosition = await User.findOne({ barangay, position });
+      if (existingPosition) {
+        res.status(409).json({ message: 'This position in the selected barangay is already taken' });
+        return;
       }
     }
 
-    const existingEmail = await User.findOne({ email });
-    if (existingEmail) {
-         res.status(409).json({ message: 'Email already exists' });
-         return;
-    }
-
-    const existingPosition = await User.findOne({ barangay, position });
-    if (existingPosition) {
-         res.status(409).json({ message: 'This position in the selected barangay is already taken' });
-         return;
-    }
-
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user: IUser = new User({ 
-        email, 
-        password: hashedPassword, 
-        role, 
-        lastName, 
-        firstName, 
-        barangay, 
-        position, 
-        phoneNumber 
+    
+    // Create new user
+    const user = new User({ 
+      email, 
+      password: hashedPassword, 
+      role, 
+      lastName, 
+      firstName, 
+      ...(role === "official" && { barangay, position }), 
+      phoneNumber 
     });
     
     await user.save();
