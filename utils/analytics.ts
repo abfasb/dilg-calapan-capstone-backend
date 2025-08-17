@@ -68,3 +68,4 @@ export const calculateSatisfactionScore = async (): Promise<number> => {
     return 80;
   }
 };
+
