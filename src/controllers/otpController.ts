@@ -1,58 +1,72 @@
 import { Request, Response, NextFunction } from 'express';
-import axios from 'axios';
+import nodemailer from 'nodemailer';
 import OTP from '../models/OTP';
-import { IUser } from '../models/User';
 
-interface IOTP extends Document {
-  phoneNumber: string;
-  otp: string;
-  createdAt: Date;
-}
 
 export const sendOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { phoneNumber } = req.body;
+    const { email } = req.body;
     
-    if (!phoneNumber || !/^9\d{9}$/.test(phoneNumber)) {
-      res.status(400).json({ message: 'Invalid phone number format' });
-      return;
+    if (!process.env.ACC_EMAIL || !process.env.ACC_PASSWORD) {
+      throw new Error('Email credentials not configured');
     }
-    
+
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    const newOTP = new OTP({
-      phoneNumber,
-      otp,
-      createdAt: new Date()
-    });
-    
+    const newOTP = new OTP({ email, otp, createdAt: new Date() });
     await newOTP.save();
-    
-    const response = await axios.get('https://smspool.net/api/send', {
-      params: {
-        key: process.env.SMSPOOL_API_KEY,
-        recipient: `63${phoneNumber}`,
-        message: `Your DILG eGov Nexus verification code is: ${otp}`,
-        sender: process.env.SMSPOOL_SENDER
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: process.env.ACC_EMAIL,
+        pass: process.env.ACC_PASSWORD
+      }
+    });
+
+    const mailOptions = {
+      from: `"DILG Calapan City" <${process.env.EMAIL_FROM}>`,
+      to: email,
+      subject: 'Your Verification Code',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #1a1d24;">DILG Calapan City Verification</h2>
+          <p>Your verification code is:</p>
+          <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px; 
+                      margin: 20px 0; padding: 10px; background: #f5f5f5; 
+                      text-align: center;">
+            ${otp}
+          </div>
+          <p>This code will expire in 5 minutes.</p>
+          <p style="font-size: 12px; color: #888; margin-top: 30px;">
+            If you didn't request this code, please ignore this email.
+          </p>
+        </div>
+      `
+    };
+
+    transporter.sendMail(mailOptions, (error) => {
+      if (error) {
+        console.error('Email send error:', error);
+        OTP.deleteOne({ email }).exec();
+        res.status(500).json({ message: 'Failed to send OTP email' });
+      } else {
+        res.json({ success: true });
       }
     });
     
-    if (response.data.success) {
-      res.json({ success: true });
-    } else {
-      await OTP.deleteOne({ phoneNumber });
-      res.status(500).json({ message: 'Failed to send OTP' });
-    }
   } catch (error: any) {
     next(error);
   }
 };
-
+// backend verification handler
 export const verifyOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { phoneNumber, otp } = req.body;
+    const { email, otp } = req.body;
+    const normalizedEmail = email.toLowerCase();
     
-    const otpRecord = await OTP.findOne({ phoneNumber })
+    const otpRecord = await OTP.findOne({ email: normalizedEmail })
       .sort({ createdAt: -1 })
       .limit(1);
     
@@ -76,6 +90,7 @@ export const verifyOTP = async (req: Request, res: Response, next: NextFunction)
     }
     
     await OTP.deleteOne({ _id: otpRecord._id });
+    
     res.json({ success: true });
   } catch (error) {
     next(error);

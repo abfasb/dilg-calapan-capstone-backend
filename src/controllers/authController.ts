@@ -12,58 +12,29 @@ const jwtSecret = process.env.JWT_SECRET_KEY || 'asdsajbdjba';
 
 export const createUser = async(req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, password, role = "citizen", lastName, firstName, barangay, position, phoneNumber, otp } = req.body;
+    const { email, password, lastName, firstName, barangay, position, phoneNumber } = req.body;
 
-    if (role === "citizen") {
-      if (!otp) {
-        res.status(400).json({ message: 'OTP is required for official registration' });
-        return;
-      }
-      
-      // Verify OTP
-      const otpRequest = {
-        body: { phoneNumber, otp }
-      } as Request;
-      
-      const otpResponse = {
-        status: (code: number) => otpResponse,
-        json: (data: any) => {
-          if (!data.success) {
-            throw new Error(data.message || 'OTP verification failed');
-          }
-        }
-      } as Response;
-      
-      await verifyOTP(otpRequest, otpResponse, next);
-    }
-
-    // Check for existing email
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
       res.status(409).json({ message: 'Email already exists' });
       return;
     }
 
-    // Check for existing position in barangay
-    if (role === "citizen") {
-      const existingPosition = await User.findOne({ barangay, position });
-      if (existingPosition) {
-        res.status(409).json({ message: 'This position in the selected barangay is already taken' });
-        return;
-      }
+    const existingPosition = await User.findOne({ barangay, position });
+    if (existingPosition) {
+      res.status(409).json({ message: 'This position in the selected barangay is already taken' });
+      return;
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // Create new user
-    const user = new User({ 
+    const user: IUser = new User({ 
       email, 
       password: hashedPassword, 
-      role, 
+      role: 'citizen',
       lastName, 
       firstName, 
-      ...(role === "official" && { barangay, position }), 
+      barangay, 
+      position, 
       phoneNumber 
     });
     
@@ -71,13 +42,10 @@ export const createUser = async(req: Request, res: Response, next: NextFunction)
     res.status(201).json({ message: 'Account created successfully!' });
 
   } catch(error: any) {
-    if (error.message.includes('OTP')) {
-      res.status(400).json({ message: error.message });
-    } else {
-      next(error);
-    }
+    next(error);
   }
 };
+
 
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {

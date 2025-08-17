@@ -61,6 +61,7 @@ app.use(session({
 app.use(express.json());
 app.use(passport.initialize());
 app.use(passport.session());
+app.use(express.urlencoded({ extended: true }));
 
 dotenv.config();
 
@@ -93,7 +94,7 @@ app.use('/api/search', AIRoutes)
 app.use('/api/citizen/notification', CitizenNotificationRoutes)
 app.use('/api/report-oversight', ReportOverSightRoutes)
 app.use('/api/monitoring', MonitoringRoutes)
-app.use('/api/send-otp', OtpRoutes)
+app.use('/api/verification', OtpRoutes)
 
 
   app.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

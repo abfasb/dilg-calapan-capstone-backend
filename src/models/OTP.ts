@@ -1,27 +1,24 @@
-import mongoose, { Schema, Document } from "mongoose";
+// backend OTP model (ensure this matches)
+import mongoose from 'mongoose';
 
-export interface IOTP extends Document {
-  phoneNumber: string;
-  otp: string;
-  createdAt: Date;
-}
-
-const OTPSchema: Schema = new Schema({
-  phoneNumber: {
-    type: String,
+const otpSchema = new mongoose.Schema({
+  email: { 
+    type: String, 
     required: true,
     index: true
   },
-  otp: {
-    type: String,
-    required: true
+  otp: { 
+    type: String, 
+    required: true,
+    minlength: 6,
+    maxlength: 6
   },
-  createdAt: {
-    type: Date,
+  createdAt: { 
+    type: Date, 
     default: Date.now,
-    expires: 300 // Automatically delete after 5 minutes (300 seconds)
+    index: { expires: '5m' } 
   }
 });
 
-const OTP = mongoose.model<IOTP>('OTP', OTPSchema);
+const OTP = mongoose.model('OTP', otpSchema);
 export default OTP;
