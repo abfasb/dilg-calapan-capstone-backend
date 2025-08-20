@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import os from 'os';
 
+// In-memory storage for historical data
+let cpuHistory: Array<{ time: string; usage: number }> = [];
+let memoryHistory: Array<{ time: string; usage: number }> = [];
+let networkHistory: Array<{ time: string; latency: number }> = [];
+let previousDocumentCount = 0;
+
 interface PerformanceMetrics {
   cpuUsage: number;
   memoryUsage: number;
@@ -26,6 +32,14 @@ interface PerformanceMetrics {
   cpuHistory: Array<{
     time: string;
     usage: number;
+  }>;
+  memoryHistory: Array<{
+    time: string;
+    usage: number;
+  }>;
+  networkHistory: Array<{
+    time: string;
+    latency: number;
   }>;
   queryPerformance: {
     avgLatency: number;
@@ -61,20 +75,18 @@ async function getDatabaseStats() {
 }
 
 // Helper function to calculate CPU usage
-function getCPUUsage(): Promise<number> {
-  return new Promise((resolve) => {
-    const startMeasure = process.cpuUsage();
-    const startTime = Date.now();
-    
-    setTimeout(() => {
-      const endMeasure = process.cpuUsage(startMeasure);
-      const endTime = Date.now();
-      const totalTime = (endTime - startTime) * 1000; // Convert to microseconds
-      
-      const cpuPercent = ((endMeasure.user + endMeasure.system) / totalTime) * 100;
-      resolve(Math.min(cpuPercent, 100));
-    }, 100);
-  });
+function getCPUUsage(): number {
+  const cpus = os.cpus();
+  let totalIdle = 0, totalTick = 0;
+  
+  for (let cpu of cpus) {
+    for (let type in cpu.times) {
+      totalTick += cpu.times[type as keyof typeof cpu.times];
+    }
+    totalIdle += cpu.times.idle;
+  }
+  
+  return Math.min(100, (1 - totalIdle / totalTick) * 100);
 }
 
 // Helper function to get memory usage
@@ -118,42 +130,46 @@ async function getCollectionStats() {
   }
 }
 
-export const getPerformanceMetrics = async (req: Request, res: Response) => {
+// Helper function to get sharding information
+async function getShardingInfo() {
   try {
-    const connectionState = mongoose.connection.readyState;
-    const databaseStatus = connectionState === 1 ? 'normal' : 
-                          connectionState === 0 ? 'disconnected' : 
-                          connectionState === 2 ? 'connecting' : 'disconnecting';
-
-    // Get system metrics
-    const cpuUsage = await getCPUUsage();
-    const memoryInfo = getMemoryUsage();
-    const uptime = process.uptime();
-    const uptimeHours = Math.floor(uptime / 3600);
-    const uptimePercent = Math.min((uptimeHours / 24) * 100, 99.99);
-
-    // Get database stats
-    const dbData = await getDatabaseStats();
-    const collectionData = await getCollectionStats();
-    
-    let storageUsed = 0;
-    let storageTotal = 1024;
-    let indexSize = 0;
-    let dataSize = 0;
-    
-    if (dbData?.stats) {
-      storageUsed = Math.round(dbData.stats.dataSize / (1024 * 1024)); // MB
-      storageTotal = Math.round(dbData.stats.storageSize / (1024 * 1024)) || 1024; // MB
-      indexSize = Math.round(dbData.stats.indexSize / (1024 * 1024)) || 10; // MB
-      dataSize = Math.round(dbData.stats.dataSize / (1024 * 1024)) || 20; // MB
+    if (!mongoose.connection.db) {
+      return [];
     }
-
-    const cpuHistory = Array.from({ length: 24 }, (_, i) => ({
-      time: `${i}:00`,
-      usage: Math.max(10, cpuUsage + (Math.random() * 20 - 10))
+    
+    const adminDb = mongoose.connection.db.admin();
+    let shards = [];
+    
+    try {
+      // Try to get sharding information
+      const shardResult = await adminDb.command({ listShards: 1 });
+      shards = shardResult.shards || [];
+    } catch (error) {
+      // If not a sharded cluster, return empty array
+      return [];
+    }
+    
+    return shards.map((shard: any) => ({
+      name: shard._id || 'Unknown',
+      status: shard.state === 1 ? 'Active' : 'Inactive',
+      usage: Math.round(Math.random() * 40 + 60), // 60-100% - in real scenario, get from stats
+      size: `${Math.round(Math.random() * 100 + 400)}GB`, // Simulated size
+      chunks: Math.round(Math.random() * 20 + 30) // 30-50 chunks
     }));
+  } catch (error) {
+    console.error('Error getting sharding info:', error);
+    return [];
+  }
+}
 
-    const recentIncidents = [
+// Helper function to get recent incidents from database (simulated)
+async function getRecentIncidents() {
+  try {
+    // In a real application, you would query your incidents database here
+    // This is a simulation that returns recent incidents with a 10% chance of a current issue
+    const hasCurrentIssue = Math.random() > 0.9;
+    
+    const incidents = [
       {
         timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
         service: 'Query Engine',
@@ -167,44 +183,86 @@ export const getPerformanceMetrics = async (req: Request, res: Response) => {
         duration: '1h 30m'
       }
     ];
+    
+    if (hasCurrentIssue) {
+      incidents.unshift({
+        timestamp: new Date().toISOString(),
+        service: 'Network',
+        status: 'investigating',
+        duration: 'Ongoing'
+      });
+    }
+    
+    return incidents;
+  } catch (error) {
+    console.error('Error getting recent incidents:', error);
+    return [];
+  }
+}
 
-    const networkLatency = Math.round(Math.random() * 50 + 50); 
-    const queryPerformance = {
-      avgLatency: networkLatency,
-      indexHitRatio: Math.round((Math.random() * 5 + 95) * 10) / 10, // 95-100%
-      latencyTrend: Math.round((Math.random() * 20 - 10) * 10) / 10, // -10% to +10%
-      indexTrend: Math.round((Math.random() * 6 - 3) * 10) / 10 // -3% to +3%
-    };
+export const getPerformanceMetrics = async (req: Request, res: Response) => {
+  try {
+    const connectionState = mongoose.connection.readyState;
+    const databaseStatus = connectionState === 1 ? 'normal' : 
+                          connectionState === 0 ? 'disconnected' : 
+                          connectionState === 2 ? 'connecting' : 'disconnecting';
 
-    const sharding = [
-      {
-        name: 'Shard-1',
-        status: 'Active',
-        usage: Math.round(Math.random() * 40 + 60), // 60-100%
-        size: '448GB',
-        chunks: Math.round(Math.random() * 20 + 30) // 30-50 chunks
-      },
-      {
-        name: 'Shard-2',
-        status: 'Active',
-        usage: Math.round(Math.random() * 40 + 60),
-        size: '392GB',
-        chunks: Math.round(Math.random() * 20 + 30)
-      },
-      {
-        name: 'Shard-3',
-        status: 'Active',
-        usage: Math.round(Math.random() * 40 + 60),
-        size: '476GB',
-        chunks: Math.round(Math.random() * 20 + 30)
-      }
-    ];
+    // Get system metrics
+    const cpuUsage = getCPUUsage();
+    const memoryInfo = getMemoryUsage();
+    const uptime = os.uptime();
+
+    // Get database stats
+    const dbData = await getDatabaseStats();
+    const collectionData = await getCollectionStats();
+    
+    let storageUsed = 0;
+    let storageTotal = 1024;
+    let indexSize = 0;
+    let dataSize = 0;
+    
+    if (dbData?.stats) {
+      storageUsed = Math.round(dbData.stats.dataSize / (1024 * 1024)); // MB
+      storageTotal = Math.round(dbData.stats.storageSize / (1024 * 1024)) || 1024; // MB
+      indexSize = Math.round((dbData.stats.indexSize || 0) / (1024 * 1024)) || 10; // MB
+      dataSize = Math.round((dbData.stats.dataSize || 0) / (1024 * 1024)) || 20; // MB
+    }
+
+    // Update history arrays
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    
+    cpuHistory.push({ time: timeString, usage: cpuUsage });
+    memoryHistory.push({ time: timeString, usage: memoryInfo.used });
+    
+    // Keep only the last 24 data points
+    if (cpuHistory.length > 24) {
+      cpuHistory = cpuHistory.slice(-24);
+      memoryHistory = memoryHistory.slice(-24);
+    }
+
+    // Calculate network latency (simulated)
+    const networkLatency = Math.round(Math.random() * 30 + 20); // 20-50ms
+    networkHistory.push({ time: timeString, latency: networkLatency });
+    if (networkHistory.length > 24) {
+      networkHistory = networkHistory.slice(-24);
+    }
+
+    // Calculate document growth
+    const documentGrowth = previousDocumentCount > 0 
+      ? ((collectionData.totalDocuments - previousDocumentCount) / previousDocumentCount) * 100 
+      : 0;
+    previousDocumentCount = collectionData.totalDocuments;
+
+    // Get additional data
+    const recentIncidents = await getRecentIncidents();
+    const sharding = await getShardingInfo();
 
     const metrics: PerformanceMetrics = {
       cpuUsage: Math.round(cpuUsage),
       memoryUsage: memoryInfo.used,
       databaseStatus,
-      uptime: `${uptimePercent.toFixed(2)}%`,
+      uptime: uptime.toString(),
       networkLatency,
       storage: {
         used: storageUsed,
@@ -217,10 +275,17 @@ export const getPerformanceMetrics = async (req: Request, res: Response) => {
       },
       recentIncidents,
       cpuHistory,
-      queryPerformance,
+      memoryHistory,
+      networkHistory,
+      queryPerformance: {
+        avgLatency: networkLatency,
+        indexHitRatio: Math.round((Math.random() * 5 + 95) * 10) / 10, // 95-100%
+        latencyTrend: Math.round((Math.random() * 20 - 10) * 10) / 10, // -10% to +10%
+        indexTrend: Math.round((Math.random() * 6 - 3) * 10) / 10 // -3% to +3%
+      },
       sharding,
       documentCount: collectionData.totalDocuments,
-      documentGrowth: Math.round((Math.random() * 20 + 5) * 10) / 10 
+      documentGrowth: Math.round(documentGrowth * 100) / 100
     };
 
     res.json({

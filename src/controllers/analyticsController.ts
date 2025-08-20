@@ -315,7 +315,6 @@ interface MonthlySubmission {
 
 export const getDashboardStats = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Real-time data aggregations
     const [submissions, complaints, events, forms, activeUsers, peakActivityDays] = await Promise.all([
       ResponseCitizen.aggregate([
         { $group: { _id: '$status', count: { $sum: 1 } } }
@@ -330,7 +329,6 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       ReportForm.aggregate([
         { $count: "count" }
       ]) as Promise<{ count: number }[]>,
-      // Active users (last 30 days)
       User.aggregate([
         {
           $match: {
@@ -339,7 +337,6 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
         },
         { $count: "count" }
       ]) as Promise<{ count: number }[]>,
-      // Peak activity by day of week
       ResponseCitizen.aggregate([
         {
           $group: {
@@ -351,7 +348,6 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
       ])
     ]);
 
-    // Department performance (top 3 barangays)
     const departmentPerformance = await ResponseCitizen.aggregate([
       {
         $lookup: {
