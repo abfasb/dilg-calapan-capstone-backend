@@ -5,3 +5,7 @@ src/config/serviceAccountKey.json.json
 
 .env
 service/*.json
+
+
+.env
+service/dilg-calapan.json
