@@ -63,7 +63,6 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // If freezeUntil is set and still in the future, block login
     if (findUser.freezeUntil && new Date() < findUser.freezeUntil) {
       const freezeDate = findUser.freezeUntil.toISOString().split('T')[0]; 
       res.status(403).json({ 
@@ -86,8 +85,8 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     }
 
     const expiresIn = rememberMe ? 
-      30 * 24 * 60 * 60 :  // 30 days
-      1 * 60 * 60;         // 1 hour
+      30 * 24 * 60 * 60 :  
+      1 * 60 * 60;        
 
     const token = jwt.sign(
       { 
