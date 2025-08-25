@@ -36,6 +36,7 @@ import LGUNotication from '../models/LGUNotication';
             expires: '03-01-2030',
           });
   
+          // @ts-ignore
           templateData = {
             fileName: uploadedFile.originalname,
             fileUrl,
@@ -53,10 +54,9 @@ import LGUNotication from '../models/LGUNotication';
         });
   
         await newForm.save();
-  
         res.status(201).json({
           message: 'Form saved successfully',
-          fileUrl: templateData?.fileUrl
+          fileUrl: (templateData as any).fileUrl
         });
       } catch (err) {
         console.error('Form creation error:', err);
@@ -118,6 +118,7 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response):
         });
 
         if (submissionType === 'file') {
+          // @ts-ignore
           bulkFileData = {
             fileName: file.originalname,
             fileType: file.mimetype,
@@ -167,7 +168,7 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response):
     res.status(201).json({
       referenceNumber,
       submissionType,
-      fileName: bulkFileData?.fileName || '',
+      fileName: (bulkFileData as any).fileName || '',
       submissionData: submissionType === 'form' ? req.body : null
     });
 

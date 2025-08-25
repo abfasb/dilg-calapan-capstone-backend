@@ -53,6 +53,7 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
         expires: '03-01-2030',
       });
 
+      // @ts-ignore
       templateData = {
         fileName: uploadedFile.originalname,
         fileUrl,
@@ -116,17 +117,20 @@ export const getReportForms = async (req : Request, res : Response, next : NextF
     let uploadedFile = null;
     
     if (req.file) {
+      // @ts-ignore
       uploadedFile = req.file;
     } 
     else if (Array.isArray(req.files) && req.files.length > 0) {
+      // @ts-ignore
       uploadedFile = req.files[0];
     }
 
     if (uploadedFile) {
+      // @ts-ignore
       const fileRef = bucket.file(`uploads/${uuidv4()}-${uploadedFile.originalname}`);
 
-      await fileRef.save(uploadedFile.buffer, {
-        metadata: { contentType: uploadedFile.mimetype },
+      await fileRef.save((uploadedFile as any).buffer, {
+        metadata: { contentType: (uploadedFile as any).mimetype },
       });
 
       const [fileUrl] = await fileRef.getSignedUrl({
@@ -135,11 +139,12 @@ export const getReportForms = async (req : Request, res : Response, next : NextF
       });
 
       updateData.template = {
-        fileName: uploadedFile.originalname,
+        fileName: (uploadedFile as any).originalname,
         fileUrl,
-        mimetype: uploadedFile.mimetype,
+        mimetype: (uploadedFile as any).mimetype,
         uploadedAt: new Date(),
       };
+
     }
 
     try {

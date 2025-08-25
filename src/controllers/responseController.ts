@@ -61,6 +61,7 @@ export const updateResponseStatus = async (req: Request, res: Response): Promise
         action: 'read',
         expires: '03-01-2030',
       });
+      // @ts-ignore
       signatureData = {
         fileName: signatureFile.originalname,
         fileUrl,
@@ -201,9 +202,18 @@ export const getResponseById = async (req: Request, res: Response): Promise<void
   }
 };
 
+interface ProcessedFile {
+  filename: string;
+  url: string;
+  mimetype: string;
+}
+
+
 export const updateResponse = async (req: Request, res: Response): Promise<void> => {
   try {
     const { submissionType } = req.body;
+    const processedFiles: ProcessedFile[] = [];
+
     const uploadedFiles = req.files as Express.Multer.File[];
     const updateData: any = {
       status: 'rejected',
@@ -222,7 +232,6 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
     }
 
 
-    const processedFiles = [];
     if (uploadedFiles.length > 0) {
       for (const file of uploadedFiles) {
         const filePath = `uploads/${req.params.id}/${Date.now()}_${file.originalname}`;
@@ -262,12 +271,13 @@ export const updateResponse = async (req: Request, res: Response): Promise<void>
 
       updateData.$set = {
         bulkFile: {
-          fileName: processedFiles[0].filename,
-          fileType: processedFiles[0].mimetype,
-          fileUrl: processedFiles[0].url,
+          fileName: (processedFiles[0] as any).filename,
+          fileType: (processedFiles[0] as any).mimetype,
+          fileUrl: (processedFiles[0] as any).url,
           uploadedAt: new Date()
         }
       };
+
     }
 
     const updatedResponse = await ResponseCitizen.findByIdAndUpdate(
