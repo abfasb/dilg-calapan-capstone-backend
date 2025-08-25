@@ -54,7 +54,7 @@
     "zod": "^3.24.2"
   },
   "scripts": {
-    "build": "tsc && cp service/dilg-calapan.json dist/service/",
+    "build": "tsc && mkdir -p dist/service && cp service/dilg-calapan.json dist/service/",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
   }
