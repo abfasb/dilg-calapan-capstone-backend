@@ -17,6 +17,7 @@
     "@types/speakeasy": "^2.0.10",
     "@types/uuid": "^10.0.0",
     "cookie-session": "^2.1.0",
+    "cpx": "^1.5.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.2"
@@ -54,7 +55,7 @@
     "zod": "^3.24.2"
   },
   "scripts": {
-    "build": "tsc && mkdir -p dist/service && cp service/dilg-calapan.json dist/service/",
+    "build": "tsc && cpx \"service/dilg-calapan.json\" dist/service/",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
   }
