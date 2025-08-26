@@ -13,10 +13,8 @@ import os from 'os';
 
 dotenv.config();
 
-const servicePath = path.resolve(process.cwd(), process.env.GOOGLE_APPLICATION_CREDENTIALS as string);
-
 admin.initializeApp({
-  credential: admin.credential.cert(require(servicePath)),
+  credential: admin.credential.cert(require(path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS as string))),
   storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
 }); 
 
