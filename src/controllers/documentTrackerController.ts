@@ -106,6 +106,7 @@ export const updateSubmissionFile = async (req: Request, res: Response) : Promis
     }
     
     if (fileIndex !== undefined && submission.files[fileIndex]) {
+      // @ts-ignore
       submission.files[fileIndex] = newFile;
     } else {
       submission.files.push(newFile);

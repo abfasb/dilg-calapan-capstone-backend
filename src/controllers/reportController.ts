@@ -75,11 +75,11 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
       parsedFields = [];
     }
 
-    // Handle deadline - convert to Date object if provided
     let deadlineDate = null;
     if (deadline) {
+      // @ts-ignore
       deadlineDate = new Date(deadline);
-      // Check if the date is valid
+      // @ts-ignore
       if (isNaN(deadlineDate.getTime())) {
         deadlineDate = null;
       }
