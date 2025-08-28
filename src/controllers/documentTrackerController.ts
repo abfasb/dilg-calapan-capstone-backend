@@ -6,10 +6,24 @@ import mongoose from 'mongoose';
 
 export const getAllForms = async (req: Request, res: Response) => {
   try {
-    const forms = await ReportForms.find({}, 'title _id');
+    const forms = await ReportForms.find({}, 'title _id deadline');
     res.status(200).json(forms);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching forms', error });
+  }
+};
+
+export const getAllFormSubmissions = async (req: Request, res: Response) => {
+  try {
+    const { formId } = req.params;
+    
+    const submissions = await ResponseCitizen.find({ formId })
+      .populate('userId', 'firstName lastName barangay')
+      .populate('formId', 'title deadline');
+    
+    res.status(200).json(submissions);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching all submissions', error });
   }
 };
 
@@ -68,7 +82,7 @@ export const getSubmissionDetails = async (req: Request, res: Response) : Promis
     
     const submission = await ResponseCitizen.findById(submissionId)
       .populate('userId', 'firstName lastName barangay')
-      .populate('formId', 'title fields');
+      .populate('formId', 'title fields deadline');
     
     if (!submission) {
        res.status(404).json({ message: 'Submission not found' });
@@ -80,13 +94,13 @@ export const getSubmissionDetails = async (req: Request, res: Response) : Promis
     res.status(500).json({ message: 'Error fetching submission details', error });
   }
 };
-// Update the updateSubmissionFile controller
+
+
 export const updateSubmissionFile = async (req: Request, res: Response) : Promise<void> => {
   try {
     const { submissionId } = req.params;
     const fileIndex = req.body.fileIndex ? parseInt(req.body.fileIndex) : undefined;
     
-    // Handle file upload logic here
     if (!req.file) {
       res.status(400).json({ message: 'No file provided' });
       return;
@@ -94,7 +108,7 @@ export const updateSubmissionFile = async (req: Request, res: Response) : Promis
     
     const newFile = {
       filename: req.file.originalname,
-      url: `/uploads/${req.file.filename}`, // Adjust based on your storage solution
+      url: `/uploads/${req.file.filename}`, 
       mimetype: req.file.mimetype
     };
 
