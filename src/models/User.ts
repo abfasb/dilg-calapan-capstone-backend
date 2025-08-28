@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document} from "mongoose";
 
-
 export interface IUser extends Document {
     id?: string,
     username: string,
@@ -10,7 +9,6 @@ export interface IUser extends Document {
     firstName: string,
     lastName: string,
     barangay: string,
-    position: string,
     phoneNumber: string,
     resetToken?: string,
     resetTokenExpiry?: Date,

@@ -14,56 +14,99 @@ import LGUNotication from '../models/LGUNotication';
 
   const upload: multer.Multer = multer({ storage: multer.memoryStorage() });
 
-  router.post(
-    '/create-report',
-    upload.single('template'), 
-    async (req: Request, res: Response) => {
-      try {
-        const { title, description, submissionType, fields } = req.body;
-        const uploadedFile = req.file
-  
-        let templateData = undefined;
-  
-        if (uploadedFile) {
-          const fileRef = bucket.file(`uploads/${uuidv4()}-${uploadedFile.originalname}`);
-  
-          await fileRef.save(uploadedFile.buffer, {
-            metadata: { contentType: uploadedFile.mimetype },
-          });
-  
-          const [fileUrl] = await fileRef.getSignedUrl({
-            action: 'read',
-            expires: '03-01-2030',
-          });
-  
-          // @ts-ignore
-          templateData = {
-            fileName: uploadedFile.originalname,
-            fileUrl,
-            mimetype: uploadedFile.mimetype,
-            uploadedAt: new Date(),
-          };
-        }
-  
-        const newForm = new ReportForms({
-          title,
-          description,
-          submissionType,
-          fields: JSON.parse(fields),
-          template: templateData,
+router.post(
+  '/create-report',
+  upload.single('template'),
+  async (req: Request, res: Response) : Promise<void> => {
+    try {
+      const { title, description, submissionType, fields, deadline } = req.body;
+      const uploadedFile = req.file;
+
+      // Log received data for debugging
+      console.log('Received form data:', {
+        title,
+        description,
+        submissionType,
+        deadline,
+        hasFields: !!fields,
+        hasFile: !!uploadedFile
+      });
+
+      let templateData = undefined;
+
+      if (uploadedFile) {
+        const fileRef = bucket.file(`uploads/${uuidv4()}-${uploadedFile.originalname}`);
+
+        await fileRef.save(uploadedFile.buffer, {
+          metadata: { contentType: uploadedFile.mimetype },
         });
-  
-        await newForm.save();
-        res.status(201).json({
-          message: 'Form saved successfully',
-          fileUrl: (templateData as any).fileUrl
+
+        const [fileUrl] = await fileRef.getSignedUrl({
+          action: 'read',
+          expires: '03-01-2030',
         });
-      } catch (err) {
-        console.error('Form creation error:', err);
-        res.status(500).json({ error: 'Error saving form' });
+
+        // @ts-ignore
+        templateData = {
+          fileName: uploadedFile.originalname,
+          fileUrl,
+          mimetype: uploadedFile.mimetype,
+          uploadedAt: new Date(),
+        };
       }
+
+      // Parse fields if they exist
+      let parsedFields = [];
+      if (fields) {
+        try {
+          parsedFields = JSON.parse(fields);
+        } catch (e) {
+          console.error('Error parsing fields:', e);
+          return res.status(400).json({ error: 'Invalid fields format' });
+        }
+      }
+
+      // Handle deadline - convert to Date object if provided
+      let deadlineDate = null;
+      if (deadline) {
+        // @ts-ignore
+        deadlineDate = new Date(deadline);
+        // @ts-ignore
+        if (isNaN(deadlineDate.getTime())) {
+          console.warn('Invalid deadline date provided:', deadline);
+          deadlineDate = null;
+        }
+      }
+
+      const newForm = new ReportForms({
+        title,
+        description,
+        submissionType,
+        deadline: deadlineDate, // Add the deadline here
+        fields: parsedFields,
+        template: templateData,
+      });
+
+      await newForm.save();
+      
+      // Log the saved document for verification
+      console.log('Form saved successfully:', {
+        id: newForm._id,
+        title: newForm.title,
+        deadline: newForm.deadline
+      });
+      
+      res.status(201).json({
+        message: 'Form saved successfully',
+        formId: newForm._id,
+        fileUrl: templateData ? templateData.fileUrl : null
+      });
+    } catch (err) {
+      console.error('Form creation error:', err);
+      res.status(500).json({ error: 'Error saving form' });
     }
-  );
+  }
+);
   
 
 router.get('/get-report', getReportForms);

@@ -20,6 +20,7 @@ import AuditLogsRoutes from './routes/AuditLogsRoutes';
 import StaffRoutes from './routes/lgu/StaffRoutes';
 import performanceRoutes from './routes/MetricsRoutes';
 import AIRoutes from './routes/AIRoutes';
+import DocumentTrackerRoutes from './routes/DocumentTrackerRoutes';
 import CitizenNotificationRoutes from './routes/CitizenNotificationRoutes';
 import ReportOverSightRoutes from './routes/ReportOverSightRoutes'
 import ResponseRoutes from './routes/lgu/ResponseRoutes'
@@ -87,6 +88,7 @@ app.use('/appointments', AppointmentRoutes)
 app.use('/events', EventRoutes);
 app.use('/api/form', FormRoutes);
 app.use('/api/response', ResponseRoutes);
+app.use('/api/document-tracker', DocumentTrackerRoutes);
 app.use('/api/notify', NotificationRoutes);
 app.use('/api/audit-logs', AuditLogsRoutes);
 app.use('/api/staff', StaffRoutes)

@@ -12,7 +12,7 @@ const jwtSecret = process.env.JWT_SECRET_KEY || 'asdsajbdjba';
 
 export const createUser = async(req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, password, lastName, firstName, barangay, position, phoneNumber } = req.body;
+    const { email, password, lastName, firstName, barangay, phoneNumber } = req.body;
 
     const existingEmail = await User.findOne({ email });
     if (existingEmail) {
@@ -20,7 +20,7 @@ export const createUser = async(req: Request, res: Response, next: NextFunction)
       return;
     }
 
-    const existingPosition = await User.findOne({ barangay, position });
+    const existingPosition = await User.findOne({ barangay });
     if (existingPosition) {
       res.status(409).json({ message: 'This position in the selected barangay is already taken' });
       return;
@@ -34,7 +34,6 @@ export const createUser = async(req: Request, res: Response, next: NextFunction)
       lastName, 
       firstName, 
       barangay, 
-      position, 
       phoneNumber 
     });
     
@@ -138,7 +137,6 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
         id: findUser._id,
         firstName: findUser.firstName,
         lastName: findUser.lastName,
-        position: findUser.position,
         barangay: findUser.barangay,
         phoneNumber: findUser.phoneNumber,
         name: `${findUser.firstName} ${findUser.lastName}`,

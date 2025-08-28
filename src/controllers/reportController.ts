@@ -5,13 +5,15 @@ import StatusHistory from '../models/StatusHistory';
 import { bucket } from '../config/firebaseConfig';
 import { v4 as uuidv4 } from 'uuid';
 import mongoose from 'mongoose';
+import multer from 'multer';
 
-import { Types } from 'mongoose';
+// Add multer configuration for file uploads
+const upload = multer({ storage: multer.memoryStorage() });
 
 interface PopulatedHistoryItem {
   status: string;
   lguId: {
-    _id: Types.ObjectId;
+    _id: mongoose.Types.ObjectId;
     firstName: string;
     lastName: string;
   } | null;
@@ -23,7 +25,7 @@ interface PopulatedDocument {
   referenceNumber: string;
   status: string;
   userId: {
-    _id: Types.ObjectId;
+    _id: mongoose.Types.ObjectId;
     firstName: string;
     lastName: string;
   };
@@ -32,10 +34,12 @@ interface PopulatedDocument {
   history: PopulatedHistoryItem[];
 }
 
-
 export const createReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { title, description, fields } = req.body;
+    // Parse the fields from the form data
+    const { title, description, fields, deadline } = req.body;
+    
+    // Handle file upload
     const uploadedFile = Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null;
 
     let templateData = undefined;
@@ -62,16 +66,39 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
       };
     }
 
+    // Parse the fields JSON string
+    let parsedFields = [];
+    try {
+      parsedFields = fields ? JSON.parse(fields) : [];
+    } catch (e) {
+      console.error('Error parsing fields:', e);
+      parsedFields = [];
+    }
+
+    // Handle deadline - convert to Date object if provided
+    let deadlineDate = null;
+    if (deadline) {
+      deadlineDate = new Date(deadline);
+      // Check if the date is valid
+      if (isNaN(deadlineDate.getTime())) {
+        deadlineDate = null;
+      }
+    }
+
     const newForm = new ReportForms({
       title,
       description,
-      fields: JSON.parse(fields),
+      deadline: deadlineDate,
+      fields: parsedFields,
       template: templateData
     });
 
     await newForm.save();
 
-    res.status(201).json({ message: "Form saved successfully" });
+    res.status(201).json({ 
+      message: "Form saved successfully",
+      formId: newForm._id 
+    });
   } catch (err) {
     console.error('Error creating report:', err);
     res.status(500).json({ error: "Error saving form" });
@@ -150,6 +177,10 @@ export const getReportForms = async (req : Request, res : Response, next : NextF
     try {
       if (updateData.fields && typeof updateData.fields === 'string') {
         updateData.fields = JSON.parse(updateData.fields);
+      }
+      // Handle deadline conversion
+      if (updateData.deadline && typeof updateData.deadline === 'string') {
+        updateData.deadline = new Date(updateData.deadline);
       }
     } catch (e) {
       console.error('Error parsing fields:', e);
