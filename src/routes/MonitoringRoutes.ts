@@ -8,8 +8,8 @@ router.post('/send-notification', sendNotification);
 router.get('/get-forms', getForms);
 router.get('/get-monitoring', getMonitoringData);
 
-router.get("/stats", async (req, res) :Promise<void> => {
-  try {
+router.get("/stats", async (req, res) : Promise<void> => {
+ try {
     const totalSubmissions = await ResponseCitizen.countDocuments();
     const approved = await ResponseCitizen.countDocuments({ status: "approved" });
     const rejected = await ResponseCitizen.countDocuments({ status: "rejected" });

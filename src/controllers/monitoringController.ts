@@ -74,98 +74,84 @@ interface Barangay {
         { id: "61", name: "Tibag" },
         { id: "62", name: "Wawa" },
       ];
+export const getForms = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const forms = await ReportForms.find({}, 'title');
+    res.json(forms);
+  } catch (error) {
+    console.error('Error fetching forms:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
-      export const getMonitoringData = async (req: Request, res: Response): Promise<void> => {
-        try {
-          const { formId } = req.query;
+// Get monitoring data
+export const getMonitoringData = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { formId } = req.query;
 
-          if (!formId) {
-            res.status(400).json({ message: 'Form ID is required' });
-            return;
-          }
+    if (!formId) {
+      res.status(400).json({ message: 'Form ID is required' });
+      return;
+    }
 
-          // Fetch submissions and populate user data
-          const submissions = await ResponseCitizen.find({ formId })
-            .populate('userId', 'barangay position')
-            .lean();
+    // Fetch all submissions for this form
+    const submissions = await ResponseCitizen.find({ formId })
+      .populate('userId', 'barangay')
+      .lean();
 
-          const statusMap = new Map();
+    // Create a map to track submission status for each barangay
+    const statusMap = new Map();
 
-          barangays.forEach(barangay => {
-            statusMap.set(barangay.id, {
-              barangayId: barangay.id,
-              barangayName: barangay.name,
-              positions: {
-                'Captain': false,
-                'Secretary': false,
-                'Treasurer': false,
-                'SK Chairman': false,
-                'Councilor': false
-              },
-              submittedCount: 0
-            });
-          });
+    // Initialize all barangays with default values
+    barangays.forEach(barangay => {
+      statusMap.set(barangay.id, {
+        barangayId: barangay.id,
+        barangayName: barangay.name,
+        submitted: false,
+        submissionDate: null
+      });
+    });
 
-          // Create a name-to-ID map for barangays
-          const barangayNameToIdMap = new Map<string, string>();
-          barangays.forEach(barangay => {
-            barangayNameToIdMap.set(barangay.name, barangay.id);
-          });
+    // Create a name-to-ID map for barangays
+    const barangayNameToIdMap = new Map<string, string>();
+    barangays.forEach(barangay => {
+      barangayNameToIdMap.set(barangay.name, barangay.id);
+    });
 
-          submissions.forEach(submission => {
-            // Try to get barangay and position from submission data first
-            let barangayKey: string | null = null;
-            let position: string | null = null;
-            
-            if (submission.data) {
-              barangayKey = submission.data.barangay || submission.data.barangayId;
-              position = submission.data.position;
-            }
+    submissions.forEach(submission => {
+      let barangayKey: string | null = null;
+      
+      if (submission.data) {
+        barangayKey = submission.data.barangay || submission.data.barangayId;
+      }
 
-            // If not found in submission data, try user data
-            if ((!barangayKey || !position) && submission.userId) {
-              const user = submission.userId as any;  // Type assertion for populated data
-              
-              // Get barangay ID from name
-              if (user.barangay && barangayNameToIdMap.has(user.barangay)) {
-                barangayKey = barangayNameToIdMap.get(user.barangay) as string;
-              }
-              
-              position = user.position;
-            }
-
-            if (!barangayKey || !position) return;
-
-            const barangayData = statusMap.get(barangayKey);
-            if (barangayData && barangayData.positions[position] !== undefined) {
-              barangayData.positions[position] = true;
-              barangayData.submittedCount++;
-            }
-          });
-
-          const monitoringData = Array.from(statusMap.values()).map(barangay => {
-            const submittedPositions = Object.values(barangay.positions).filter(Boolean).length;
-            const totalPositions = Object.keys(barangay.positions).length;
-
-            let overallStatus: 'low' | 'medium' | 'high' = 'low';
-            if (submittedPositions === totalPositions) {
-              overallStatus = 'high';
-            } else if (submittedPositions >= totalPositions / 2) {
-              overallStatus = 'medium';
-            }
-
-            return {
-              ...barangay,
-              overallStatus
-            };
-          });
-
-          res.json(monitoringData);
-        } catch (error) {
-          console.error('Error fetching monitoring data:', error);
-          res.status(500).json({ message: 'Server error' });
+      if (!barangayKey && submission.userId) {
+        const user = submission.userId as any;
+        if (user.barangay && barangayNameToIdMap.has(user.barangay)) {
+          barangayKey = barangayNameToIdMap.get(user.barangay) as string;
         }
-      };
+      }
+
+      if (!barangayKey) return;
+
+      const barangayData = statusMap.get(barangayKey);
+      if (barangayData) {
+        barangayData.submitted = true;
+        barangayData.submissionDate = submission.createdAt;
+      }
+    });
+
+    const monitoringData = Array.from(statusMap.values()).map(barangay => ({
+      ...barangay,
+      overallStatus: barangay.submitted ? 'completed' : 'pending'
+    }));
+
+    res.json(monitoringData);
+  } catch (error) {
+    console.error('Error fetching monitoring data:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+};
 
 
 export const sendNotification = async (req: Request, res: Response): Promise<void> => {
@@ -231,13 +217,3 @@ export const sendNotification = async (req: Request, res: Response): Promise<voi
   }
 };
 
-
-export const getForms = async (req : Request, res : Response) : Promise<void> => {
-  try {
-    const forms = await ReportForms.find({}, 'title');
-    res.json(forms);
-  } catch (error) {
-    console.error('Error fetching forms:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-};

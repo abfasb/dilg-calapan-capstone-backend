@@ -36,10 +36,8 @@ interface PopulatedDocument {
 
 export const createReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    // Parse the fields from the form data
     const { title, description, fields, deadline } = req.body;
     
-    // Handle file upload
     const uploadedFile = Array.isArray(req.files) && req.files.length > 0 ? req.files[0] : null;
 
     let templateData = undefined;
@@ -66,7 +64,6 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
       };
     }
 
-    // Parse the fields JSON string
     let parsedFields = [];
     try {
       parsedFields = fields ? JSON.parse(fields) : [];
@@ -459,6 +456,97 @@ export const getAllResponsesWithFormInfo = async (
     res.status(500).json({
       message: 'Server error',
       error: error instanceof Error ? error.message : String(error),
+    });
+  }
+};
+
+
+export const updateSubmissionFile = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { submissionId } = req.params;
+    const { fileIndex } = req.body;
+    const file = req.file;
+
+    if (!file) {
+      res.status(400).json({ error: "No file provided" });
+      return;
+    }
+
+    const submission = await ResponseCitizen.findById(submissionId);
+    if (!submission) {
+      res.status(404).json({ error: "Submission not found" });
+      return;
+    }
+
+    const referenceNumber = submission.referenceNumber;
+
+    const fileRef = bucket.file(`uploads/${referenceNumber}/${file.originalname}`);
+    await fileRef.save(file.buffer, {
+      metadata: { contentType: file.mimetype },
+    });
+
+    const [url] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: '03-01-2030',
+    });
+
+    if (fileIndex !== undefined && fileIndex !== null) {
+      if (submission.files && submission.files[fileIndex]) {
+        try {
+          const oldFileRef = bucket.file(`uploads/${referenceNumber}/${submission.files[fileIndex].filename}`);
+          await oldFileRef.delete();
+        } catch (error) {
+          console.log("Old file not found or couldn't be deleted:", error);
+        }
+
+        // @ts-ignore
+        submission.files[fileIndex] = {
+          filename: file.originalname,
+          url,
+          mimetype: file.mimetype
+        };
+      } else {
+        res.status(400).json({ error: "Invalid file index" });
+        return;
+      }
+    } else {
+      if (submission.bulkFile) {
+        try {
+          const oldFileRef = bucket.file(`uploads/${referenceNumber}/${submission.bulkFile.fileName}`);
+          await oldFileRef.delete();
+        } catch (error) {
+          console.log("Old bulk file not found or couldn't be deleted:", error);
+        }
+      }
+
+      submission.bulkFile = {
+        fileName: file.originalname,
+        fileType: file.mimetype,
+        fileUrl: url,
+        uploadedAt: new Date()
+      };
+    }
+
+    submission.history.push({
+      status: submission.status,
+      updatedBy: 'Super Admin', 
+      lguName: 'System Admin',
+      document: 'File updated',
+      timestamp: new Date(),
+      currentStatus: submission.status
+    });
+
+    await submission.save();
+
+    res.status(200).json({
+      message: "File updated successfully",
+      submission
+    });
+  } catch (error) {
+    console.error('Error updating file:', error);
+    res.status(500).json({
+      error: 'Failed to update file',
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 };

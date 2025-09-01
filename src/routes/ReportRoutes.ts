@@ -1,5 +1,5 @@
   import Express, { NextFunction, Request, Response } from 'express';
-  import { createReport, getReportForms, getUserReports, updateReportForms, getUserReportsAndTracking, getSubmissionController, getCitizenCases} from '../controllers/reportController';
+  import { createReport, getReportForms, getUserReports, updateReportForms, getUserReportsAndTracking, updateSubmissionFile, getSubmissionController, getCitizenCases} from '../controllers/reportController';
   import ReportForms from '../models/ReportForm';
   import ResponseCitizen from '../models/ResponseCitizen';
   import multer from 'multer';
@@ -22,7 +22,6 @@ router.post(
       const { title, description, submissionType, fields, deadline } = req.body;
       const uploadedFile = req.file;
 
-      // Log received data for debugging
       console.log('Received form data:', {
         title,
         description,
@@ -62,11 +61,11 @@ router.post(
           parsedFields = JSON.parse(fields);
         } catch (e) {
           console.error('Error parsing fields:', e);
-          return res.status(400).json({ error: 'Invalid fields format' });
+           res.status(400).json({ error: 'Invalid fields format' });
+           return;
         }
       }
 
-      // Handle deadline - convert to Date object if provided
       let deadlineDate = null;
       if (deadline) {
         // @ts-ignore
@@ -96,6 +95,7 @@ router.post(
         deadline: newForm.deadline
       });
       
+      //@ts-ignore
       res.status(201).json({
         message: 'Form saved successfully',
         formId: newForm._id,
@@ -223,6 +223,9 @@ router.post('/:id/responses', upload.any(), async (req: Request, res: Response):
     });
   }
 });
+
+router.put('/submission/:submissionId/file', upload.single('file'), updateSubmissionFile);
+
 
 router.get('/my-reports/:id', getUserReports);
 /*
