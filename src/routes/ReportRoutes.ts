@@ -54,7 +54,6 @@ router.post(
         };
       }
 
-      // Parse fields if they exist
       let parsedFields = [];
       if (fields) {
         try {
@@ -81,14 +80,13 @@ router.post(
         title,
         description,
         submissionType,
-        deadline: deadlineDate, // Add the deadline here
+        deadline: deadlineDate, 
         fields: parsedFields,
         template: templateData,
       });
 
       await newForm.save();
       
-      // Log the saved document for verification
       console.log('Form saved successfully:', {
         id: newForm._id,
         title: newForm.title,
@@ -99,6 +97,7 @@ router.post(
       res.status(201).json({
         message: 'Form saved successfully',
         formId: newForm._id,
+          // @ts-ignore
         fileUrl: templateData ? templateData.fileUrl : null
       });
     } catch (err) {
