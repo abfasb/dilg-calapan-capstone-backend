@@ -25,7 +25,6 @@ export const getAllUsers = async (req: Request, res: Response): Promise<void> =>
         name: `${user.firstName} ${user.lastName}`,
         role: user.role,
         phoneNumber: user.phoneNumber,
-        position: user.position,
         createdAt: user.createdAt,
         freezeUntil: user.freezeUntil,
         type: "Regular",
