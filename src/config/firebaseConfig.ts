@@ -13,10 +13,17 @@ import os from 'os';
 
 dotenv.config();
 
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT as string);
+
 admin.initializeApp({
-  credential: admin.credential.cert(require(path.resolve(process.env.GOOGLE_APPLICATION_CREDENTIALS as string))),
+  credential: admin.credential.cert({
+    projectId: serviceAccount.project_id,
+    clientEmail: serviceAccount.client_email,
+    privateKey: serviceAccount.private_key.replace(/\\n/g, '\n'),
+  }),
   storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-}); 
+});
+
 
 const bucket = getStorage().bucket();
 const messaging = admin.messaging();
