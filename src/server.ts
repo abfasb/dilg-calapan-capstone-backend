@@ -207,14 +207,15 @@ io.on('connection', (socket) => {
 });
 
 io.engine.on("initial_headers", (headers) => {
-  headers["Access-Control-Allow-Origin"] = "http://localhost:5173";
+  headers["Access-Control-Allow-Origin"] = process.env.CLIENT_URL || "*";
   headers["Access-Control-Allow-Credentials"] = "true";
 });
 
 io.engine.on("headers", (headers) => {
-  headers["Access-Control-Allow-Origin"] = "http://localhost:5173";
+  headers["Access-Control-Allow-Origin"] = process.env.CLIENT_URL || "*";
   headers["Access-Control-Allow-Credentials"] = "true";
 });
+
 
 export const sendNotification = (
   io: Server,

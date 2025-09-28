@@ -31,7 +31,7 @@ export const getFormSubmissionsByBarangay = async (req: Request, res: Response) 
   try {
     const { formId } = req.params;
     
-    const barangays = await User.distinct('barangay', { barangay: { $ne: null } });
+    const userBarangays = await User.distinct('barangay', { barangay: { $ne: null } });
     
     const submissions = await ResponseCitizen.aggregate([
       { $match: { formId: new mongoose.Types.ObjectId(formId) } },
@@ -55,23 +55,28 @@ export const getFormSubmissionsByBarangay = async (req: Request, res: Response) 
     
     const submissionMap = new Map();
     submissions.forEach(item => {
-      submissionMap.set(item._id, item);
+      submissionMap.set(item._id, {
+        hasSubmission: true,
+        submissionCount: item.count,
+        latestSubmission: item.submissions.sort((a: any, b: any) => 
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+      });
     });
     
-    const result = barangays.map(barangay => {
+    const result = userBarangays.map(barangay => {
       const submissionData = submissionMap.get(barangay);
       return {
         barangay,
-        hasSubmission: !!submissionData,
-        submissionCount: submissionData?.count || 0,
-        latestSubmission: submissionData ? 
-          submissionData.submissions.sort((a: any, b: any) => 
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] : null
+        hasSubmission: submissionData ? true : false,
+        submissionCount: submissionData?.submissionCount || 0,
+        latestSubmission: submissionData?.latestSubmission || null,
+        formId: formId
       };
     });
     
     res.status(200).json(result);
   } catch (error) {
+    console.error('Error fetching submissions by barangay:', error);
     res.status(500).json({ message: 'Error fetching submissions', error });
   }
 };
