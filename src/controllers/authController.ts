@@ -34,7 +34,8 @@ export const createUser = async(req: Request, res: Response, next: NextFunction)
       lastName, 
       firstName, 
       barangay, 
-      phoneNumber 
+      phoneNumber,
+      position: 'Secretary'
     });
     
     await user.save();

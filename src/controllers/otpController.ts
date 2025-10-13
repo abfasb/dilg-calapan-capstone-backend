@@ -60,6 +60,7 @@ export const sendOTP = async (req: Request, res: Response, next: NextFunction): 
     next(error);
   }
 };
+
 // backend verification handler
 export const verifyOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
