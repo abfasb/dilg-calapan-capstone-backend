@@ -1,62 +1,52 @@
 import { Request, Response, NextFunction } from 'express';
 import nodemailer from 'nodemailer';
 import OTP from '../models/OTP';
+import { sendEmail } from '../services/sendEmail';
 
-
-export const sendOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const sendOTP = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const { email } = req.body;
-    
-    if (!process.env.ACC_EMAIL || !process.env.ACC_PASSWORD) {
-      throw new Error('Email credentials not configured');
+
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error("Resend API key not configured");
     }
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
     const newOTP = new OTP({ email, otp, createdAt: new Date() });
     await newOTP.save();
 
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user: process.env.ACC_EMAIL,
-        pass: process.env.ACC_PASSWORD
-      }
-    });
-
-    const mailOptions = {
-      from: `"DILG Calapan City" <${process.env.EMAIL_FROM}>`,
-      to: email,
-      subject: 'Your Verification Code',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #1a1d24;">DILG Calapan City Verification</h2>
-          <p>Your verification code is:</p>
-          <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px; 
-                      margin: 20px 0; padding: 10px; background: #f5f5f5; 
-                      text-align: center;">
-            ${otp}
-          </div>
-          <p>This code will expire in 5 minutes.</p>
-          <p style="font-size: 12px; color: #888; margin-top: 30px;">
-            If you didn't request this code, please ignore this email.
-          </p>
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1d24;">DILG Calapan City Verification</h2>
+        <p>Your verification code is:</p>
+        <div style="font-size: 24px; font-weight: bold; letter-spacing: 2px;
+                    margin: 20px 0; padding: 10px; background: #f5f5f5;
+                    text-align: center;">
+          ${otp}
         </div>
-      `
-    };
+        <p>This code will expire in 5 minutes.</p>
+        <p style="font-size: 12px; color: #888; margin-top: 30px;">
+          If you didn't request this code, please ignore this email.
+        </p>
+      </div>
+    `;
 
-    transporter.sendMail(mailOptions, (error) => {
-      if (error) {
-        console.error('Email send error:', error);
-        OTP.deleteOne({ email }).exec();
-        res.status(500).json({ message: 'Failed to send OTP email' });
-      } else {
-        res.json({ success: true });
-      }
-    });
-    
-  } catch (error: any) {
+    const success = await sendEmail(email, "Your Verification Code", html) as any;
+
+    if (success) {
+      res.json({ success: true });
+    } else {
+      // delete OTP if email failed
+      await OTP.deleteOne({ email });
+      res.status(500).json({ message: "Failed to send OTP email" });
+    }
+  } catch (error) {
+    console.error("❌ OTP send error:", error);
     next(error);
   }
 };
