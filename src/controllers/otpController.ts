@@ -11,10 +11,6 @@ export const sendOTP = async (
   try {
     const { email } = req.body;
 
-    if (!process.env.RESEND_API_KEY) {
-      throw new Error("Resend API key not configured");
-    }
-
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     const newOTP = new OTP({ email, otp, createdAt: new Date() });
