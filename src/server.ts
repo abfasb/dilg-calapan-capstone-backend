@@ -53,6 +53,26 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+const allowedOrigins = [
+  'http://localhost:5173',
+  'https://dilg-calapan.vercel.app' 
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = '❌ The CORS policy for this site does not allow access from this origin: ' + origin;
+      console.warn(msg);
+      return callback(new Error(msg), false);
+    }
+
+    return callback(null, true);
+  },
+  credentials: true
+}));
+
 app.use(session({
   secret: process.env.SESSION_SECRET as string || 'blasdbsad',
   resave: false,
