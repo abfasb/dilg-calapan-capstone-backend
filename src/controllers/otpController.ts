@@ -37,7 +37,6 @@ export const sendOTP = async (
     if (success) {
       res.json({ success: true });
     } else {
-      // delete OTP if email failed
       await OTP.deleteOne({ email });
       res.status(500).json({ message: "Failed to send OTP email" });
     }
