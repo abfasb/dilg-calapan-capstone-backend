@@ -1,6 +1,14 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
-const blogPostSchema = new mongoose.Schema({
+export interface IBlogPost extends Document {
+  title: string;
+  content: string;
+  date: Date;
+  status: 'draft' | 'published';
+  images: string[];
+}
+
+const blogPostSchema: Schema<IBlogPost> = new Schema({
   title: {
     type: String,
     required: true,
@@ -25,10 +33,12 @@ const blogPostSchema = new mongoose.Schema({
   },
   images: {
     type: [String],
-    validate: [(arr : any) => arr.length <= 8, 'Maximum of 8 images allowed'],
+    validate: {
+      validator: (arr: string[]) => arr.length <= 8,
+      message: 'Maximum of 8 images allowed',
+    },
   },
 });
 
-const BlogPost = mongoose.model('BlogPost', blogPostSchema);
+export default mongoose.model<IBlogPost>('BlogPost', blogPostSchema);
 
-export default BlogPost;

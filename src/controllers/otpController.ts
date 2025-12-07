@@ -49,7 +49,6 @@ export const sendOTP = async (
   }
 };
 
-// backend verification handler
 export const verifyOTP = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, otp } = req.body;

@@ -7,7 +7,7 @@
   import { v4 as uuidv4 } from 'uuid';
   import mongoose from 'mongoose';
   import _ from 'lodash';
-import LGUNotication from '../models/LGUNotication';
+import LGUNotication from '../models/LGUNotification';
 
 
   const router = Express.Router();
