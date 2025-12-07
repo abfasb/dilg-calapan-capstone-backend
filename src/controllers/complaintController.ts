@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import Complaint, { IComplaint } from '../models/Complaint';
 import mongoose from 'mongoose';
 import Notification from '../models/Notification';
-import LGUNotication from '../models/LGUNotication';
+import LGUNotication from '../models/LGUNotification';
 
 export const createComplaint = async (req: Request, res: Response): Promise<void> => {
   try {
