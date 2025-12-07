@@ -6,7 +6,6 @@ import AuthRoutes from './routes/AuthRoutes';
 import UserRoutes from './routes/UserRoutes';
 import ReportRoutes from './routes/ReportRoutes';
 import PendingLguRoutes from './routes/PendingLguRoutes';
-import databaseRoutes from './routes/databaseRoutes';
 import FAQRoutes from './routes/FAQRoutes';
 import BlogsRoutes from './routes/BlogsRoutes';
 import AnalyticsRoutes from './routes/AnalyticsRoutes';
@@ -107,7 +106,6 @@ app.use('/api/blogs', BlogsRoutes);
 app.use('/complaints', ComplaintRoutes)
 app.use('/appointments', AppointmentRoutes)
 app.use('/events', EventRoutes);
-app.use('/api/database', databaseRoutes);
 app.use('/api/form', FormRoutes);
 app.use('/api/response', ResponseRoutes);
 app.use('/api/document-tracker', DocumentTrackerRoutes);

@@ -20,4 +20,5 @@ const LGUnNotificationSchema = new Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-export default mongoose.model('LGUnNotification', LGUnNotificationSchema);
+export default mongoose.models.LGUnNotification || 
+       mongoose.model<ILGUnNotification>('LGUnNotification', LGUnNotificationSchema);

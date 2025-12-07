@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import LGUNotication from '../models/LGUNotification';
+import LGUNotication from '../models/LGUNotication';
 
 export const getUserNotifications = async (req: Request, res: Response) : Promise<void> => {
   try {

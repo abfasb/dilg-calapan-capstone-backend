@@ -4,7 +4,7 @@ import { Types } from 'mongoose';
 import { messaging } from '../config/firebaseConfig';
 import User from '../models/User';
 import { createNotification } from './citizenNotificationController';
-import LGUNotication from '../models/LGUNotification';
+import LGUNotication from '../models/LGUNotication';
 
 export const createAppointment = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
