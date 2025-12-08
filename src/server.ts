@@ -35,6 +35,7 @@ const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
+const path = require('path');
 
 const app = express();
 const server = createServer(app);
