@@ -337,15 +337,19 @@ export const getDashboardStats = async (req: Request, res: Response, next: NextF
         },
         { $count: "count" }
       ]) as Promise<{ count: number }[]>,
-      ResponseCitizen.aggregate([
-        {
-          $group: {
-            _id: { $dayOfWeek: "$createdAt" },
-            count: { $sum: 1 }
-          }
-        },
-        { $sort: { count: -1 } }
-      ])
+        ResponseCitizen.aggregate([
+      {
+        $match: { createdAt: { $type: "date" } } 
+      },
+      {
+        $group: {
+          _id: { $dayOfWeek: "$createdAt" },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { count: -1 } }
+    ])
+
     ]);
 
     const departmentPerformance = await ResponseCitizen.aggregate([
